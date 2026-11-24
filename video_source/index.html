@@ -37,10 +37,11 @@ svg{position:absolute;left:0;top:0}
 .mono{font-family:'CMU Serif','DejaVu Serif',serif}
 </style></head><body>
 <div id="root"></div>
+<script src="plan.js"></script>
 <script>
-const TL=[ // [id, start, end]
- ['s0',0,4],['s1',4,16],['s2',16,28],['s3',28,37],['s4',37,46],['s5',46,58],['s6',58,67],['s7',67,76],['s8',76,80]];
-window.TOTAL=80;
+const TL=window.PLAN.TL;
+const MAPS=window.PLAN.A;
+window.TOTAL=window.PLAN.TOTAL;
 const NS='http://www.w3.org/2000/svg';
 const root=document.getElementById('root');
 function scene(id,html,step){const d=document.createElement('div');d.className='scene';d.id=id;
@@ -143,6 +144,10 @@ scene('s8',`${E(0.2,'<div class="logo" style="position:static;justify-content:ce
  ${E(0.9,'<div class="title" style="font-size:54px">Yechim tugadi</div>','position:absolute;left:0;right:0;top:640px;text-align:center')}
  ${E(1.5,'<div style="font-size:28px;font-weight:600;color:#53605a">Keyingi masalada ko‘rishamiz</div>','position:absolute;left:0;right:0;top:760px;text-align:center')}`);
 
+function M(id,x){const A=MAPS[id];if(!A||!A.length)return x;
+ if(x<=A[0][0])return x-A[0][0]+A[0][1];
+ for(let i=0;i<A.length-1;i++){const [o0,n0]=A[i],[o1,n1]=A[i+1];if(x<=o1)return n0+(x-o0)*(n1-n0)/(o1-o0)}
+ const [ol,nl]=A[A.length-1];return x-ol+nl}
 const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
 const ease=x=>1-Math.pow(1-x,3);
 window.render=function(t){
@@ -153,17 +158,17 @@ window.render=function(t){
   const fi=clamp((t-s)/0.35),fo=clamp((e-t)/0.3);sc.style.opacity=Math.min(fi,fo);
   const lt=t-s;
   sc.querySelectorAll('.el').forEach(el=>{
-   const a=parseFloat(el.dataset.a||0);const p=ease(clamp((lt-a)/0.55));
+   const a=M(id,parseFloat(el.dataset.a||0));const p=ease(clamp((lt-a)/0.55));
    el.style.opacity=p;
    if(el.tagName.toLowerCase()==='g'||el.namespaceURI===NS){el.setAttribute('transform',`translate(0 ${(1-p)*22})`)}
    else el.style.transform=`translateY(${(1-p)*22}px)`;
    if(el.classList.contains('grow')){const d=parseFloat(el.dataset.d||1);const r=ease(clamp((lt-a)/d));
      el.querySelectorAll('rect').forEach(r0=>{r0.style.transformOrigin='80px 0';r0.style.transform=`scaleX(${r})`});
      el.setAttribute('transform','');el.style.opacity=lt>=a?1:0}
-   const c=el.querySelector('.cnt');if(c){const k=ease(clamp((lt-parseFloat(c.dataset.t0))/(parseFloat(c.dataset.t1)-parseFloat(c.dataset.t0))));
+   const c=el.querySelector('.cnt');if(c){const t0=M(id,parseFloat(c.dataset.t0)),t1=t0+(parseFloat(c.dataset.t1)-parseFloat(c.dataset.t0));const k=ease(clamp((lt-t0)/(t1-t0)));
      c.textContent=Math.round(parseFloat(c.dataset.from)+(parseFloat(c.dataset.to)-parseFloat(c.dataset.from))*k)}
   });
-  if(id==='s4'){const k=clamp((lt-2)/1.2);sc.querySelectorAll('.nsel').forEach(r=>{r.setAttribute('fill',k>0?`rgb(${47+(185-47)*k|0},${143+(182-143)*k|0},${91+(170-91)*k|0})`:'#2f8f5b')});
+  if(id==='s4'){const k=clamp((lt-M('s4',2))/1.2);sc.querySelectorAll('.nsel').forEach(r=>{r.setAttribute('fill',k>0?`rgb(${47+(185-47)*k|0},${143+(182-143)*k|0},${91+(170-91)*k|0})`:'#2f8f5b')});
     sc.querySelectorAll('.sel').forEach(r=>{r.setAttribute('fill',k>0?`rgb(${47+(232-47)*k|0},${143+(100-143)*k|0},${91+(58-91)*k|0})`:'#2f8f5b')})}
  }
 };
