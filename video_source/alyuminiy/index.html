@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="uz"><head><meta charset="utf-8"><title>Kimyo video yechim</title>
+<style>
+:root{--ink:#17302b;--acc:#e8643a;--green:#2f8f5b;--blue:#3a7bd5;--yel:#f6d65c;--bg:#fbf6e9;--grey:#b9b6aa}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:720px;height:1280px;overflow:hidden;background:var(--bg)}
+body{font-family:'Inter','Liberation Sans',sans-serif;color:var(--ink);position:relative;
+ background-image:linear-gradient(#e8e2cf 1px,transparent 1px),linear-gradient(90deg,#e8e2cf 1px,transparent 1px);
+ background-size:36px 36px;background-color:var(--bg)}
+body:before{content:"";position:absolute;left:46px;top:0;bottom:0;width:2px;background:#f0b8a8}
+.scene{position:absolute;inset:0;opacity:0}
+.tag{position:absolute;top:34px;left:60px;font-weight:800;font-size:19px;color:var(--acc);border:2.5px solid var(--acc);
+ padding:5px 12px;border-radius:7px;transform:rotate(-3deg);letter-spacing:1px}
+.logo{position:absolute;top:30px;right:50px;font-weight:800;font-size:26px;display:flex;align-items:center;gap:12px}
+.logo i{width:46px;height:46px;border-radius:50%;background:#17302b;display:inline-block;position:relative}
+.logo i:after{content:"";position:absolute;left:12px;top:12px;width:22px;height:22px;border-radius:50%;background:var(--green);box-shadow:5px 4px 0 -2px #f6d65c}
+.logo small{display:block;font-size:12px;letter-spacing:3px;color:var(--acc);font-weight:700}
+.chip{display:inline-block;background:var(--yel);font-weight:800;font-size:25px;letter-spacing:1px;padding:7px 20px;border-radius:6px;
+ transform:rotate(-2deg);box-shadow:3px 3px 0 #0001}
+.head{position:absolute;top:150px;left:0;right:0;text-align:center}
+.title{font-family:'CMU Serif','DejaVu Serif',serif;font-style:italic;font-size:52px;margin-top:26px;font-weight:500}
+.body{position:absolute;left:70px;right:56px;top:350px;font-size:34px;line-height:1.5}
+.body p{margin-bottom:26px}
+.hl{background:linear-gradient(transparent 55%,#f6d65c 55%);font-weight:700}
+.big{position:absolute;left:0;right:0;text-align:center;font-weight:800}
+.eq{font-size:56px;color:var(--ink)}
+.dots{position:absolute;bottom:56px;left:0;right:0;display:flex;justify-content:center;gap:16px}
+.dots b{width:14px;height:14px;border-radius:50%;border:2.5px solid var(--ink);display:block}
+.dots b.on{background:var(--acc);border-color:var(--acc);width:36px;border-radius:8px}
+.dots b.done{background:var(--ink)}
+.lbl{position:absolute;font-size:25px;font-weight:600;text-align:center;line-height:1.25}
+.pill{position:absolute;border-radius:40px;font-weight:800;font-size:34px;padding:10px 26px;color:#fff;text-align:center}
+.card{position:absolute;left:70px;right:56px;background:#fff;border:2.5px solid var(--ink);border-left:12px solid var(--ink);
+ border-radius:6px;padding:14px 22px;font-size:31px;font-weight:700;box-shadow:4px 4px 0 #0001}
+.card small{display:block;font-size:20px;font-weight:600;color:#6a766f;margin-bottom:3px}
+svg{position:absolute;left:0;top:0}
+.mono{font-family:'CMU Serif','DejaVu Serif',serif}
+</style></head><body>
+<div id="root"></div>
+<script src="plan.js"></script>
+<script>
+const TL=window.PLAN.TL;
+const MAPS=window.PLAN.A;
+window.TOTAL=window.PLAN.TOTAL;
+const NS='http://www.w3.org/2000/svg';
+const root=document.getElementById('root');
+function scene(id,html,step){const d=document.createElement('div');d.className='scene';d.id=id;
+ let dots='';if(step!=null){dots='<div class="dots">'+[0,1,2,3,4].map(i=>'<b class="'+(i<step?'done':i==step?'on':'')+'"></b>').join('')+'</div>'}
+ d.innerHTML=html+dots;root.appendChild(d);return d}
+const topbar=(chipText,title)=>`<div class="tag">VIDEO YECHIM</div><div class="logo"><i></i><div>KIMYO<small>MASALA · YECHIM</small></div></div>
+ <div class="head"><span class="chip">${chipText}</span><div class="title">${title}</div></div>`;
+const E=(a,inner,style='',cls='',extra='')=>`<div class="el ${cls}" data-a="${a}" style="${style}" ${extra}>${inner}</div>`;
+
+
+// S0 intro
+scene('s0',`
+ ${E(0.2,'<div class="logo" style="position:static;justify-content:center;font-size:44px"><i style="width:72px;height:72px"></i><div>KIMYO<small style="font-size:17px">MASALA · YECHIM</small></div></div>','position:absolute;left:0;right:0;top:360px')}
+ ${E(0.8,'<span class="chip" style="font-size:36px">VIDEO YECHIM</span>','position:absolute;left:0;right:0;top:560px;text-align:center')}
+ ${E(1.4,'<div class="title" style="font-size:62px;line-height:1.2">Alyuminiy nitrat<br>eritmasi va dissotsilanish</div>','position:absolute;left:0;right:0;top:680px;text-align:center')}
+`);
+// S1 masala
+scene('s1',topbar('MASALA','Shartni o‘qiymiz')+`
+ <div class="body" style="top:330px;font-size:33px;line-height:1.48">
+  ${E(0.4,'<p>Alyuminiy nitrat eritmasida tuzning dissotsilanishidan hosil bo‘lgan <span class="hl">ionlar miqdori</span> dissotsilanmagan tuz tarkibidagi <span class="hl">atomlar miqdoridan 2,3 mol ko‘p</span>,</p>')}
+  ${E(3.4,'<p><span class="hl">suv molekulalari</span> miqdoridan esa <span class="hl">17,9 mol kam</span>.</p>')}
+  ${E(5.4,'<p>Tuzning dissotsilanish darajasi <span class="hl">90 %</span>.</p>')}
+  ${E(7.2,'<p style="font-weight:800;color:#e8643a">Eritmadagi tuzning massa ulushini (%) toping.</p>')}
+  ${E(9.2,'<p style="font-size:27px;color:#53605a">(Suvning dissotsilanishi hisobga olinmasin.)</p>')}
+ </div>
+ ${E(10.6,'<div style="display:flex;gap:22px;justify-content:center;font-size:32px;font-weight:700"><span>A) 28,4</span><span>B) 35,5</span><span>C) 39,8</span><span>D) 42,6</span></div>','position:absolute;left:0;right:0;top:1090px')}
+`);
+// S2 1-qadam: ionlar va atomlar
+scene('s2',topbar('1-QADAM','Tuz formulasi bo‘yicha')+`
+ ${E(0.5,'<span class="mono" style="font-style:normal;font-size:44px;font-weight:600;white-space:nowrap">Al(NO<sub>3</sub>)<sub>3</sub> → Al<sup>3+</sup> + 3NO<sub>3</sub><sup>−</sup></span>','position:absolute;left:0;right:0;top:370px;text-align:center')}
+ ${E(2.6,'<small>1 ta formula birligidan hosil bo‘ladigan IONLAR</small>1 (Al³⁺) + 3 (NO₃⁻) = <span style="color:#e8643a">4 ta</span>','top:520px','card')}
+ ${E(5.2,'<small>1 ta formula birligidagi ATOMLAR (dissotsilanmagan tuzda)</small>1 (Al) + 3 (N) + 9 (O) = <span style="color:#e8643a">13 ta</span>','top:690px','card')}
+ ${E(8,'<div style="font-size:30px;font-weight:600;color:#53605a;text-align:center">Ionlar: 4 ta · Atomlar: 13 ta</div>','position:absolute;left:0;right:0;top:900px')}
+`,0);
+// S3 2-qadam: n mol, alfa
+scene('s3',topbar('2-QADAM','Tuz miqdorini n deymiz')+`
+ <svg width="720" height="1280" viewBox="0 0 720 1280">
+  <g class="el" data-a="0.4"><rect x="80" y="470" width="560" height="90" rx="14" fill="#fff" stroke="#17302b" stroke-width="5"/>
+   <text x="360" y="455" text-anchor="middle" font-size="30" font-weight="700">n mol Al(NO₃)₃ eritildi</text></g>
+  <g class="el grow" data-a="2" data-d="1.2"><rect x="80" y="470" width="504" height="90" rx="14" fill="#2f8f5b"/><text x="332" y="528" text-anchor="middle" font-size="32" font-weight="800" fill="#fff">α = 90 %</text></g>
+  <g class="el" data-a="3.3"><rect x="584" y="470" width="56" height="90" rx="14" fill="#b9b6aa"/></g>
+  <g class="el" data-a="3.3"><text x="332" y="610" text-anchor="middle" font-size="26" font-weight="700" fill="#2f8f5b">dissotsilanadi: 0,9n</text><text x="584" y="650" text-anchor="middle" font-size="26" font-weight="700" fill="#6a766f">qoladi: 0,1n</text></g>
+ </svg>
+ ${E(5.2,'<span style="font-size:31px;font-weight:600">100 % − 90 % = 10 % dissotsilanmay qoladi</span>','position:absolute;left:0;right:0;top:780px;text-align:center')}
+`,1);
+// S4 3-qadam: tenglama
+scene('s4',topbar('3-QADAM','Ionlar va atomlar farqi')+`
+ ${E(0.4,'<small>Ionlar (dissotsilangan 0,9n dan)</small>4 · 0,9n = <span style="color:#2f8f5b">3,6n</span>','top:350px','card')}
+ ${E(2.6,'<small>Atomlar (dissotsilanmagan 0,1n dan)</small>13 · 0,1n = <span style="color:#6a766f">1,3n</span>','top:500px','card')}
+ ${E(5,'<div style="font-size:34px;font-weight:600;text-align:center;margin-bottom:10px">Shartga ko‘ra: ionlar − atomlar = 2,3 mol</div><div class="mono" style="font-size:58px;font-weight:700;text-align:center">3,6n − 1,3n = 2,3</div>','position:absolute;left:0;right:0;top:690px')}
+ ${E(7.4,'<span class="mono" style="font-size:54px;font-weight:800;color:#e8643a;white-space:nowrap">n = 2,3 : 2,3 = 1 mol</span>','position:absolute;left:0;right:0;top:900px;text-align:center')}
+`,2);
+// S5 4-qadam: suv
+scene('s5',topbar('4-QADAM','Suv miqdori')+`
+ ${E(0.4,'<small>Hosil bo‘lgan ionlar (n = 1 mol)</small>3,6 · 1 = <span style="color:#2f8f5b">3,6 mol</span>','top:350px','card')}
+ ${E(2.8,'<div style="font-size:33px;font-weight:600;text-align:center">Ionlar suvdan 17,9 mol kam, demak:</div><div class="mono" style="font-size:40px;font-weight:700;text-align:center;margin-top:12px;white-space:nowrap">n(H<sub>2</sub>O) = 3,6 + 17,9 = <span class="cnt" data-from="3.6" data-to="21.5" data-t0="3.4" data-t1="4.6" data-dec="1">3,6</span> mol</div>','position:absolute;left:0;right:0;top:520px')}
+ ${E(6.2,'<span class="mono" style="font-size:44px;font-weight:700;white-space:nowrap">m(H<sub>2</sub>O) = 21,5 · 18 = <span class="cnt" data-from="0" data-to="387" data-t0="6.6" data-t1="8" data-dec="0" style="color:#e8643a;font-weight:800">0</span> g</span>','position:absolute;left:0;right:0;top:800px;text-align:center')}
+`,3);
+// S6 5-qadam: massa ulushi
+scene('s6',topbar('5-QADAM','Massa ulushi')+`
+ ${E(0.4,'<small>M(Al(NO₃)₃) = 27 + 3 · (14 + 3·16)</small>M = 213 g/mol','top:350px','card')}
+ ${E(2.2,'<small>m(tuz) = n · M</small>1 · 213 = <span style="color:#2f8f5b">213 g</span>','top:490px','card')}
+ ${E(4,'<small>m(eritma) = m(tuz) + m(suv)</small>213 + 387 = <span style="color:#17302b">600 g</span>','top:630px','card')}
+ ${E(6,'<span class="mono" style="font-size:38px;font-weight:700;white-space:nowrap">w = 213 : 600 · 100 = <span class="cnt" data-from="0" data-to="35.5" data-t0="6.4" data-t1="7.8" data-dec="1" style="color:#e8643a;font-weight:800">0</span> %</span>','position:absolute;left:0;right:0;top:880px;text-align:center')}
+`,4);
+// S7 javoblar
+scene('s7',topbar('JAVOB','Natijalar')+`
+ ${E(0.5,'<small>1-qadam</small>1 ta formula birligi: 4 ion, 13 atom','top:340px','card')}
+ ${E(1.4,'<small>2-qadam</small>dissotsilangan 0,9n, qolgan 0,1n','top:450px','card')}
+ ${E(2.3,'<small>3-qadam</small>3,6n − 1,3n = 2,3 ⇒ n = 1 mol','top:560px','card')}
+ ${E(3.2,'<small>4-qadam</small>n(H₂O) = 21,5 mol, m = 387 g','top:670px','card')}
+ ${E(4.1,'<small>5-qadam</small>w = 213 : 600 · 100 = 35,5 %','top:780px;border-left-color:#e8643a','card')}
+ ${E(5.4,'<div style="font-size:30px;font-weight:700;margin-bottom:8px">Javob:</div><div style="font-size:78px;font-weight:800;color:#e8643a;white-space:nowrap">B) 35,5 %</div>','position:absolute;left:0;right:0;top:960px;text-align:center')}
+`,4);
+// S8 outro
+scene('s8',`${E(0.2,'<div class="logo" style="position:static;justify-content:center;font-size:42px"><i style="width:68px;height:68px"></i><div>KIMYO<small style="font-size:16px">MASALA · YECHIM</small></div></div>','position:absolute;left:0;right:0;top:470px')}
+ ${E(0.9,'<div class="title" style="font-size:54px">Yechim tugadi</div>','position:absolute;left:0;right:0;top:640px;text-align:center')}
+ ${E(1.5,'<div style="font-size:28px;font-weight:600;color:#53605a">Keyingi masalada ko‘rishamiz</div>','position:absolute;left:0;right:0;top:760px;text-align:center')}`);
+
+function M(id,x){const A=MAPS[id];if(!A||!A.length)return x;return x}
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const ease=x=>1-Math.pow(1-x,3);
+window.render=function(t){
+ for(const [id,s,e] of TL){
+  const sc=document.getElementById(id);
+  const inT=t>=s&&t<e;
+  sc.style.display=inT?'block':'none';if(!inT)continue;
+  const fi=clamp((t-s)/0.35),fo=clamp((e-t)/0.3);sc.style.opacity=Math.min(fi,fo);
+  const lt=t-s;
+  sc.querySelectorAll('.el').forEach(el=>{
+   const a=M(id,parseFloat(el.dataset.a||0));const p=ease(clamp((lt-a)/0.55));
+   el.style.opacity=p;
+   if(el.tagName.toLowerCase()==='g'||el.namespaceURI===NS){el.setAttribute('transform',`translate(0 ${(1-p)*22})`)}
+   else el.style.transform=`translateY(${(1-p)*22}px)`;
+   if(el.classList.contains('grow')){const d=parseFloat(el.dataset.d||1);const r=ease(clamp((lt-a)/d));
+     el.querySelectorAll('rect').forEach(r0=>{r0.style.transformOrigin='80px 0';r0.style.transform=`scaleX(${r})`});
+     el.setAttribute('transform','');el.style.opacity=lt>=a?1:0}
+   const c=el.querySelector('.cnt');if(c){const t0=M(id,parseFloat(c.dataset.t0)),t1=t0+(parseFloat(c.dataset.t1)-parseFloat(c.dataset.t0));const k=ease(clamp((lt-t0)/(t1-t0)));
+     const v=parseFloat(c.dataset.from)+(parseFloat(c.dataset.to)-parseFloat(c.dataset.from))*k;c.textContent=v.toFixed(parseInt(c.dataset.dec||0)).replace('.',',')}
+  });
+  if(id==='s4'){const k=clamp((lt-M('s4',2))/1.2);sc.querySelectorAll('.nsel').forEach(r=>{r.setAttribute('fill',k>0?`rgb(${47+(185-47)*k|0},${143+(182-143)*k|0},${91+(170-91)*k|0})`:'#2f8f5b')});
+    sc.querySelectorAll('.sel').forEach(r=>{r.setAttribute('fill',k>0?`rgb(${47+(232-47)*k|0},${143+(100-143)*k|0},${91+(58-91)*k|0})`:'#2f8f5b')})}
+ }
+};
+render(0);
+</script></body></html>
