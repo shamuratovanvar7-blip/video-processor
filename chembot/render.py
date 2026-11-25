@@ -13,9 +13,9 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
 W, H = 720, 1280
 FPS = 12
 
-BRAND_NAME = os.getenv("BRAND_NAME", "Murodjon Nabijonov")
-BRAND_HANDLE = os.getenv("BRAND_HANDLE", "@murodjon.domla")
-BRAND_TITLE = os.getenv("BRAND_TITLE", "MURODJON")
+BRAND_NAME = os.getenv("BRAND_NAME", "Anvar domla")
+BRAND_HANDLE = os.getenv("BRAND_HANDLE", "@anvar.domla")
+BRAND_TITLE = os.getenv("BRAND_TITLE", "ANVAR")
 BRAND_SUB = os.getenv("BRAND_SUB", "DOMLA · KIMYO")
 
 CREAM = (251, 245, 230)
