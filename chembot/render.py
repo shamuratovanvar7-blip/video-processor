@@ -32,20 +32,26 @@ SAND = (255, 236, 170)
 WHITE = (255, 255, 255)
 
 _FD = "/usr/share/fonts/truetype/dejavu/"
+_CMU = os.path.join(HERE, "assets", "fonts")
+# CMU Serif Roman / Bold (loyiha ichida), yo'q belgilar uchun DejaVu zaxira
 _FONT_FILES = {
-    "serif_b": [_FD + "DejaVuSerif-Bold.ttf", "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf"],
-    "sans": [_FD + "DejaVuSans.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"],
-    "sans_b": [_FD + "DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"],
+    "sans": [os.path.join(_CMU, "cmunrm.ttf"), "/usr/share/fonts/truetype/cmu/cmunrm.ttf", _FD + "DejaVuSerif.ttf"],
+    "sans_b": [os.path.join(_CMU, "cmunbx.ttf"), "/usr/share/fonts/truetype/cmu/cmunbx.ttf", _FD + "DejaVuSerif-Bold.ttf"],
+    "serif_b": [os.path.join(_CMU, "cmunbx.ttf"), "/usr/share/fonts/truetype/cmu/cmunbx.ttf", _FD + "DejaVuSerif-Bold.ttf"],
+    "fb": [_FD + "DejaVuSerif.ttf", _FD + "DejaVuSans.ttf"],
+    "fb_b": [_FD + "DejaVuSerif-Bold.ttf", _FD + "DejaVuSans-Bold.ttf"],
 }
+FS = 1.16  # CMU belgilari DejaVu'ga qaraganda kichikroq, shuning uchun biroz kattalashtiramiz
 _font_cache = {}
 
 
 def font(kind, size):
     key = (kind, size)
     if key not in _font_cache:
+        px = size if kind.startswith("fb") else int(round(size * FS))
         for p in _FONT_FILES[kind]:
             if os.path.exists(p):
-                _font_cache[key] = ImageFont.truetype(p, size)
+                _font_cache[key] = ImageFont.truetype(p, px)
                 break
         else:
             _font_cache[key] = ImageFont.load_default()
@@ -66,13 +72,58 @@ def fix_text(s):
     return s
 
 
-def wrap(text, fnt, maxw):
+_SUBM = dict(zip("₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎", "0123456789+-=()"))
+_SUPM = dict(zip("⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾", "0123456789+-=()"))
+_FALLBACK = set("≈≠≤≥′⇄⇌↔⚗")
+
+
+def to_runs(text):
+    """Matnni (belgi, rejim, zaxira) bo'laklariga ajratadi: rejim n/sub/sup."""
+    runs = []
+    for ch in text:
+        if ch in _SUBM:
+            c, mode = _SUBM[ch], "sub"
+        elif ch in _SUPM:
+            c, mode = _SUPM[ch], "sup"
+        else:
+            c, mode = ch, "n"
+        fb = ch in _FALLBACK
+        if runs and runs[-1][1] == mode and runs[-1][2] == fb:
+            runs[-1][0] += c
+        else:
+            runs.append([c, mode, fb])
+    return runs
+
+
+def _run_font(kind, size, mode, fb):
+    sz = size if mode == "n" else max(int(size * 0.68), 10)
+    k = ("fb" if kind == "sans" else "fb_b") if fb else kind
+    return font(k, sz)
+
+
+def rich_width(text, kind, size):
+    return sum(_run_font(kind, size, m, fb).getlength(c) for c, m, fb in to_runs(text))
+
+
+def rich_draw(d, x, top, text, kind, size, fill):
+    """Indeksli matnni chizadi (CMU Serif'da indeks raqamlari yo'qligi uchun qo'lda)."""
+    base = font(kind, size)
+    baseline = top + base.getmetrics()[0]
+    for c, m, fb in to_runs(text):
+        f = _run_font(kind, size, m, fb)
+        dy = 0 if m == "n" else (int(size * 0.20) if m == "sub" else -int(size * 0.34))
+        d.text((x, baseline + dy), c, font=f, fill=fill, anchor="ls")
+        x += f.getlength(c)
+    return x
+
+
+def wrap(text, kind, size, maxw):
     lines = []
     for para in text.split("\n"):
         words, cur = para.split(" "), ""
         for w in words:
             t = (cur + " " + w).strip()
-            if fnt.getlength(t) <= maxw or not cur:
+            if rich_width(t, kind, size) <= maxw or not cur:
                 cur = t
             else:
                 lines.append(cur)
@@ -81,32 +132,30 @@ def wrap(text, fnt, maxw):
     return lines
 
 
-def text_strip(text, kind, size, fill, align="center", maxw=CONTENT_W, pad=0, line_gap=1.3):
-    fnt = font(kind, size)
-    lines = wrap(text, fnt, maxw)
+def text_strip(text, kind, size, fill, align="center", maxw=CONTENT_W, pad=0, line_gap=1.38):
+    lines = wrap(text, kind, size, maxw)
     lh = int(size * line_gap)
     h = lh * len(lines) + pad * 2
     im = Image.new("RGBA", (W, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     for i, ln in enumerate(lines):
-        tw = fnt.getlength(ln)
+        tw = rich_width(ln, kind, size)
         x = (W - tw) / 2 if align == "center" else (W - maxw) / 2
-        d.text((x, pad + i * lh), ln, font=fnt, fill=fill)
+        rich_draw(d, x, pad + i * lh, ln, kind, size, fill)
     return im
 
 
 def chip_strip(text, size, bg, fg=INK, kind="sans_b", maxw=CONTENT_W, padx=22, pady=10, radius=16, tilt=0.0):
-    fnt = font(kind, size)
-    lines = wrap(text, fnt, maxw - 2 * padx)
-    lh = int(size * 1.3)
-    tw = max(fnt.getlength(l) for l in lines)
+    lines = wrap(text, kind, size, maxw - 2 * padx)
+    lh = int(size * 1.38)
+    tw = max(rich_width(l, kind, size) for l in lines)
     bw, bh = int(tw + 2 * padx), lh * len(lines) + 2 * pady
     chip = Image.new("RGBA", (bw + 8, bh + 8), (0, 0, 0, 0))
     d = ImageDraw.Draw(chip)
     d.rounded_rectangle((4, 7, bw + 4, bh + 7), radius, fill=(10, 40, 90, 40))  # soya
     d.rounded_rectangle((4, 4, bw + 4, bh + 4), radius, fill=bg)
     for i, ln in enumerate(lines):
-        d.text((4 + (bw - fnt.getlength(ln)) / 2, 4 + pady + i * lh), ln, font=fnt, fill=fg)
+        rich_draw(d, 4 + (bw - rich_width(ln, kind, size)) / 2, 4 + pady + i * lh, ln, kind, size, fg)
     if tilt:
         chip = chip.rotate(tilt, expand=True, resample=Image.BICUBIC)
     strip = Image.new("RGBA", (W, chip.height + 4), (0, 0, 0, 0))
@@ -161,8 +210,7 @@ def credits(im):
         return
     d = ImageDraw.Draw(im)
     txt = "Ustozlar: " + "  ·  ".join(TEACHERS)
-    f = font("sans_b", 20)
-    d.text(((W - f.getlength(txt)) / 2, 1030), txt, font=f, fill=INK_SOFT)
+    rich_draw(d, (W - rich_width(txt, "sans_b", 22)) / 2, 1026, txt, "sans_b", 22, INK_SOFT)
 
 
 def dots(im, n, cur):
@@ -226,11 +274,10 @@ def caption(d, text, cy):
     if not text:
         return
     text = fix_text(text)
-    fnt = font("sans_b", 27)
-    tw = fnt.getlength(text)
+    tw = rich_width(text, "sans_b", 27)
     x = (SW - tw) / 2
     d.rounded_rectangle((x - 16, cy - 6, x + tw + 16, cy + 40), 10, fill=(255, 255, 255, 235), outline=LIGHT + (255,), width=2)
-    d.text((x, cy), text, font=fnt, fill=INK)
+    rich_draw(d, x, cy, text, "sans_b", 27, INK)
 
 
 def bubbles(d, t, x0, x1, ybot, ytop, n=14, seed=1, r=(3, 7), speed=0.35):
@@ -291,7 +338,7 @@ def scene_beaker(d, t, p):
     if p.get("gas_color") or p.get("gas"):
         gas_cloud(d, t, cx, top + 20, p.get("gas_color") or "#D9926B")
     if p.get("gas"):
-        d.text((cx + 120, top - 30), fix_text(str(p["gas"])) + "↑", font=font("sans_b", 34), fill=INK)
+        rich_draw(d, cx + 120, top - 34, fix_text(str(p["gas"])) + "↑", "sans_b", 34, INK)
     caption(d, p.get("caption"), top + 270)
 
 
@@ -326,7 +373,7 @@ def scene_test_tube(d, t, p):
             d.polygon([(bx - 14 * sc, by + 40), (bx, by + 40 - h), (bx + 14 * sc, by + 40)], fill=c)
     if p.get("gas"):
         gas_cloud(d, t, mx - 10, my - 5, (200, 200, 205), 0.8, seed=9)
-        d.text((mx + 30, my - 100), fix_text(str(p["gas"])) + "↑", font=font("sans_b", 34), fill=INK)
+        rich_draw(d, mx + 30, my - 104, fix_text(str(p["gas"])) + "↑", "sans_b", 34, INK)
     caption(d, p.get("caption"), SH - 52)
 
 
@@ -344,13 +391,12 @@ def scene_electrolysis(d, t, p):
     bubbles(d, t, ex_a - 14, ex_a + 14, ybot - 5, top + 62, n=8, seed=4, r=(2, 5))
     bubbles(d, t, ex_c - 14, ex_c + 14, ybot - 5, top + 62, n=4, seed=8, r=(2, 4), speed=0.2)
     d.rounded_rectangle((cx - 40, 8, cx + 40, 42), 6, fill=(40, 40, 44, 255))
-    d.text((cx - 28, 10), "–", font=font("sans_b", 26), fill=WHITE)
-    d.text((cx + 12, 10), "+", font=font("sans_b", 26), fill=WHITE)
+    rich_draw(d, cx - 28, 8, "–", "sans_b", 26, WHITE)
+    rich_draw(d, cx + 12, 8, "+", "sans_b", 26, WHITE)
     d.line((cx - 30, 8, cx - 30, 2, ex_c, 2, ex_c, ytop), fill=(40, 40, 44, 255), width=3)
     d.line((cx + 30, 8, cx + 30, 2, ex_a, 2, ex_a, ytop), fill=(40, 40, 44, 255), width=3)
-    f = font("sans_b", 22)
-    d.text((ex_c - 52, top + bh + 8), "KATOD (–)", font=f, fill=INK_SOFT)
-    d.text((ex_a - 48, top + bh + 8), "ANOD (+)", font=f, fill=INK_SOFT)
+    rich_draw(d, ex_c - 56, top + bh + 6, "KATOD (–)", "sans_b", 24, INK_SOFT)
+    rich_draw(d, ex_a - 52, top + bh + 6, "ANOD (+)", "sans_b", 24, INK_SOFT)
     py = top + bh + 52
     d.rounded_rectangle((90, py, SW - 90, py + 28), 14, fill=(255, 255, 255, 230), outline=NAVY + (255,), width=3)
     frac = min(t / 4.0, 1.0) * float(p.get("progress", 0.6))
@@ -358,8 +404,7 @@ def scene_electrolysis(d, t, p):
         d.rounded_rectangle((92, py + 2, 92 + int((SW - 184) * frac), py + 26), 12, fill=ACCENT + (255,))
     if p.get("progress_label"):
         lbl = fix_text(str(p["progress_label"]))
-        fl = font("sans_b", 26)
-        d.text(((SW - fl.getlength(lbl)) / 2, py + 36), lbl, font=fl, fill=INK)
+        rich_draw(d, (SW - rich_width(lbl, "sans_b", 28)) / 2, py + 34, lbl, "sans_b", 28, INK)
 
 
 SCENES = {"beaker": scene_beaker, "test_tube": scene_test_tube, "electrolysis": scene_electrolysis}
@@ -470,15 +515,15 @@ def build_slides(data):
         base = static_base("JAVOBLAR", "Natijalar", n, max(n - 1, 0))
         strips, y = [], 310
         for a in answers[:6]:
-            val = wrap(fix_text(a.get("value", "")), font("sans_b", 34), CONTENT_W - 60)
-            ch = 52 + 44 * len(val) + 14
+            val = wrap(fix_text(a.get("value", "")), "sans_b", 34, CONTENT_W - 60)
+            ch = 52 + 46 * len(val) + 14
             card = Image.new("RGBA", (W, ch + 12), (0, 0, 0, 0))
             cd = ImageDraw.Draw(card)
             x0, x1 = (W - CONTENT_W) // 2, (W + CONTENT_W) // 2
             cd.rounded_rectangle((x0, 6, x1, 6 + ch), 12, fill=WHITE, outline=NAVY, width=3)
-            cd.text((x0 + 20, 14), fix_text(a.get("label", "")), font=font("sans", 20), fill=INK_SOFT)
+            rich_draw(cd, x0 + 20, 12, fix_text(a.get("label", "")), "sans", 22, INK_SOFT)
             for j, ln in enumerate(val):
-                cd.text((x0 + 20, 46 + 44 * j), ln, font=font("sans_b", 34), fill=INK)
+                rich_draw(cd, x0 + 20, 44 + 46 * j, ln, "sans_b", 34, INK)
             strips.append((card, y))
             y += card.height + 20
         slides.append(Slide(base, strips, hold=3.5, reveal=[1.4] * len(strips)))
@@ -486,10 +531,12 @@ def build_slides(data):
     # 5. Ustozlar sahifasi
     base = background()
     d = ImageDraw.Draw(base)
-    cy = 330
-    d.ellipse((W // 2 - 62, cy - 62, W // 2 + 62, cy + 62), fill=NAVY)
-    ic = font("sans_b", 64)
-    d.text((W // 2 - ic.getlength("⚗") / 2, cy - 42), "⚗", font=ic, fill=WHITE)
+    # shablon sarlavhasidagi kolba ikonkasini kattalashtirib qo'yamiz
+    icon = background().crop((172, 26, 242, 102))
+    icon = icon.resize((int(icon.width * 2.3), int(icon.height * 2.3)), Image.LANCZOS)
+    mask = Image.new("L", icon.size, 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, icon.width - 1, icon.height - 1), fill=255)
+    base.paste(icon, ((W - icon.width) // 2, 240), mask)
     items = [(text_strip("Ustozlar", "serif_b", 30, INK_SOFT), 430)]
     y = 490
     for name in TEACHERS:
