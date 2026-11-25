@@ -16,6 +16,9 @@ import solver
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("chembot")
+# httpx so'rov manzilini (ichida bot tokeni bor) logga yozmasin
+for _n in ("httpx", "httpcore"):
+    logging.getLogger(_n).setLevel(logging.WARNING)
 
 # Kredit himoyasi
 ALLOWED = {int(x) for x in re.findall(r"\d+", os.getenv("ALLOWED_USERS", ""))}
