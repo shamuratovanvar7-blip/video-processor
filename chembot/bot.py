@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import re
 import tempfile
 import time
 from collections import defaultdict, deque
@@ -17,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger("chembot")
 
 # Kredit himoyasi
-ALLOWED = {int(x) for x in os.getenv("ALLOWED_USERS", "").replace(" ", "").split(",") if x}
+ALLOWED = {int(x) for x in re.findall(r"\d+", os.getenv("ALLOWED_USERS", ""))}
 MAX_PER_HOUR = int(os.getenv("MAX_PER_HOUR", "10"))
 _hist = defaultdict(deque)
 _sem = asyncio.Semaphore(int(os.getenv("MAX_PARALLEL", "2")))
@@ -78,6 +79,10 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+    for name in ("TELEGRAM_BOT_TOKEN", "ANTHROPIC_API_KEY"):
+        if not os.getenv(name):
+            raise SystemExit(f"Muhit o'zgaruvchisi topilmadi: {name}")
+    log.info("Bot ishga tushmoqda. Ruxsat berilgan ID lar: %s", sorted(ALLOWED) or "hamma")
     app = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"]).build()
     app.add_handler(CommandHandler(["start", "help"], start))
     app.add_handler(MessageHandler((filters.TEXT & ~filters.COMMAND) | filters.PHOTO, handle))
