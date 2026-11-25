@@ -471,11 +471,12 @@ def build_slides(data):
     n = len(steps)
     slides = []
 
-    # 1. Masala
-    base = static_base("MASALA", data.get("title"), 0, 0, title_size=32)
-    ptxt = fix_text(data.get("problem_text", ""))
-    items = layout_items([{"text": ptxt, "style": "note"}], 280, 1120, size=34, left=True)
-    slides.append(Slide(base, items, hold=max(3.0, 0.04 * len(ptxt)), reveal=[1.0]))
+    # 1. Masala sahifasi (sukut bo'yicha o'chiq: video to'g'ridan-to'g'ri yechimdan boshlanadi)
+    if os.getenv("SHOW_PROBLEM", "0") == "1" and data.get("problem_text"):
+        base = static_base("MASALA", data.get("title"), 0, 0, title_size=32)
+        ptxt = fix_text(data.get("problem_text", ""))
+        items = layout_items([{"text": ptxt, "style": "note"}], 280, 1120, size=34, left=True)
+        slides.append(Slide(base, items, hold=max(3.0, 0.04 * len(ptxt)), reveal=[1.0]))
 
     # 2. Qadamlar
     for i, st in enumerate(steps):
