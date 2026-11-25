@@ -48,6 +48,8 @@ def rate_ok(uid):
 
 
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if ALLOWED and update.effective_user.id not in ALLOWED:
+        return  # ruxsatsiz foydalanuvchiga jim turamiz
     await update.message.reply_text(HELP)
 
 
@@ -101,7 +103,10 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE, mode="auto", te
     rec["count"] += 1
     log.info("Foydalanuvchi: id=%s ism=%s username=@%s xabar#%s", uid, u.full_name, u.username, rec["count"])
     if ALLOWED and uid not in ALLOWED:
-        await msg.reply_text(f"Kechirasiz, sizga ruxsat berilmagan. (ID: {uid})")
+        # Ruxsatsiz foydalanuvchiga javob bermaymiz (jim turamiz), faqat logga yozamiz
+        log.warning("RUXSATSIZ urinish: id=%s ism=%s username=@%s", uid, u.full_name, u.username)
+        if os.getenv("SILENT_DENY", "1") != "1":
+            await msg.reply_text(f"Kechirasiz, sizga ruxsat berilmagan. (ID: {uid})")
         return
     text = (text_override if text_override is not None else (msg.text or msg.caption or "")).strip()
     img = None
