@@ -28,10 +28,12 @@ _stat = {"requests": 0, "input": 0, "output": 0}
 _users = {}  # id -> {"name", "username", "count"}
 _sem = asyncio.Semaphore(int(os.getenv("MAX_PARALLEL", "2")))
 
-HELP = ("Salom! Men kimyo masalalari va nazariyasini video darsga aylantiraman.\n\n"
-        "• Masala matnini (yoki rasmini) yuboring: o'zim yechib, video tayyorlayman.\n"
-        "• Mavzu yozing (masalan: «Mol nima?»): nazariya videosi tayyorlayman.\n\n"
-        "Aniq tanlash uchun:\n/nazariya Alkanlar\n/masala 10 g CaCO3 parchalansa...\n\n"
+HELP = ("Salom! Men kimyo nazariyasi va masalalarini video darsga aylantiraman.\n\n"
+        "Xabar boshiga kalit so'z yozing:\n"
+        "• «mavzu: Mol nima?»: nazariyani tushuntirib video qilaman.\n"
+        "• «masala: 10 g CaCO3 parchalansa, necha l CO2 hosil bo'ladi?»: masalani yechib, tushuntirib video qilaman.\n\n"
+        "Kalit so'zsiz yozsangiz, o'zim aniqlayman. Masala rasmini ham yuborishingiz mumkin "
+        "(izohiga «masala» deb yozing).\n\n"
         "Video ~1-2 daqiqada tayyor bo'ladi.")
 
 
@@ -106,7 +108,14 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE, mode="auto", te
     if msg.photo:
         f = await msg.photo[-1].get_file()
         img = bytes(await f.download_as_bytearray())
+    if mode == "auto":
+        m = re.match(r"^\s*(mavzu|nazariya|masala)\b[\s:.\-–—]*", text, re.I)
+        if m:
+            mode = "problem" if m.group(1).lower() == "masala" else "theory"
+            text = text[m.end():].strip()
     if not text and not img:
+        if mode != "auto":
+            await msg.reply_text("Kalit so'zdan keyin matnni yozing.\nMasalan: «mavzu: Mol nima?» yoki «masala: 10 g CaCO3 parchalansa...»")
         return
     if not rate_ok(uid):
         await msg.reply_text("Soatlik limitga yetdingiz, birozdan so'ng urinib ko'ring.")
