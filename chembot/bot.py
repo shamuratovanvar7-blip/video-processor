@@ -28,12 +28,12 @@ _stat = {"requests": 0, "input": 0, "output": 0}
 _users = {}  # id -> {"name", "username", "count"}
 _sem = asyncio.Semaphore(int(os.getenv("MAX_PARALLEL", "2")))
 
-HELP = ("Salom! Men kimyo nazariyasi va masalalarini video darsga aylantiraman.\n\n"
+HELP = ("Salom! Men kimyo va biologiya nazariyasi hamda masalalarini video darsga aylantiraman.\n\n"
         "Xabar boshiga kalit so'z yozing:\n"
         "• «mavzu: Mol nima?»: nazariyani tushuntirib video qilaman.\n"
-        "• «masala: 10 g CaCO3 parchalansa, necha l CO2 hosil bo'ladi?»: masalani yechib, tushuntirib video qilaman.\n\n"
-        "Kalit so'zsiz yozsangiz, o'zim aniqlayman. Masala rasmini ham yuborishingiz mumkin "
-        "(izohiga «masala» deb yozing).\n\n"
+        "• «masala: 10 g CaCO3 parchalansa, necha l CO2 hosil bo'ladi?»: masalani yechib, tushuntirib video qilaman.\n"
+        "• Fan: «biologiya mavzu: Mitoz» yoki «kimyo masala: ...». Fan yozilmasa, o'zim aniqlayman.\n\n"
+        "Masala rasmini ham yuborishingiz mumkin (izohiga «masala» deb yozing).\n\n"
         "Video ~1-2 daqiqada tayyor bo'ladi.")
 
 
@@ -108,10 +108,14 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE, mode="auto", te
     if msg.photo:
         f = await msg.photo[-1].get_file()
         img = bytes(await f.download_as_bytearray())
+    subject = None
     if mode == "auto":
-        m = re.match(r"^\s*(mavzu|nazariya|masala)\b[\s:.\-–—]*", text, re.I)
-        if m:
-            mode = "problem" if m.group(1).lower() == "masala" else "theory"
+        m = re.match(r"^\s*(?:(kimyo|biologiya|bio)\b[\s:.,\-–—]*)?(?:(mavzu|nazariya|masala)\b[\s:.\-–—]*)?", text, re.I)
+        if m and (m.group(1) or m.group(2)):
+            if m.group(1):
+                subject = "biologiya" if m.group(1).lower().startswith("bio") else "kimyo"
+            if m.group(2):
+                mode = "problem" if m.group(2).lower() == "masala" else "theory"
             text = text[m.end():].strip()
     if not text and not img:
         if mode != "auto":
@@ -125,7 +129,7 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE, mode="auto", te
     async with _sem:
         try:
             await ctx.bot.send_chat_action(msg.chat_id, ChatAction.TYPING)
-            data = await asyncio.to_thread(solver.solve, text, img, mode)
+            data = await asyncio.to_thread(solver.solve, text, img, mode, subject)
             u = data.pop("_usage", {})
             _stat["requests"] += 1
             _stat["input"] += u.get("input", 0)

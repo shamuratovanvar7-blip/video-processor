@@ -1,0 +1,9 @@
+{"mode":"theory","subject":"biologiya","title":"Mitoz","problem_text":"",
+ "steps":[
+  {"label":"1-QISM","title":"Mitoz nima?","scene":"none","lines":[
+    {"text":"Mitoz — hujayraning bo'linish usuli","style":"box"},
+    {"text":"Natija: 2 ta bir xil qiz hujayra","style":"result"}]},
+  {"label":"2-QISM","title":"Bosqichlar","scene":"none","lines":[
+    {"text":"Profaza → Metafaza → Anafaza → Telofaza","style":"equation"},
+    {"text":"Xromosomalar soni o'zgarmaydi: 2n → 2n","style":"note"}]}],
+ "rules":["Mitoz — somatik hujayralar bo'linishi","2n → 2n","4 ta bosqich"],"answers":[]}

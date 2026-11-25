@@ -20,7 +20,23 @@ SPEED = float(os.getenv("VIDEO_SPEED", "1.0"))  # >1 tezroq, <1 sekinroq
 FRAME = (20, 112, 1260, 650)  # ramka (x0, y0, x1, y1)
 CONTENT_W = 1100
 
-TEACHERS = [t.strip() for t in os.getenv("TEACHERS", "Shamuratov Anvar|Jo'rayev Ahror").split("|") if t.strip()]
+def _names(env, default):
+    return [t.strip() for t in os.getenv(env, default).split("|") if t.strip()]
+
+
+# Fan bo'yicha ustozlar: kimyo -> bitta ustoz, biologiya -> ikkala ustoz
+TEACHERS_BY_SUBJECT = {
+    "kimyo": _names("TEACHERS_KIMYO", "Shamuratov Anvar"),
+    "biologiya": _names("TEACHERS_BIOLOGIYA", "Shamuratov Anvar|Jo'rayev Ahror"),
+}
+
+
+def teachers_for(subject):
+    return TEACHERS_BY_SUBJECT.get(subject) or TEACHERS_BY_SUBJECT["kimyo"]
+
+
+def _credit_text(teachers):
+    return ("Ustoz: " if len(teachers) == 1 else "Ustozlar: ") + "  ·  ".join(teachers)
 BRAND_HANDLE = os.getenv("BRAND_HANDLE", "").strip()
 
 NAVY = (16, 58, 110)
@@ -261,11 +277,11 @@ def background(mode="problem"):
     return _bg_cache[key].copy()
 
 
-def credits(im):
-    if not TEACHERS:
+def credits(im, teachers):
+    if not teachers:
         return
     d = ImageDraw.Draw(im)
-    txt = "Ustozlar: " + "  ·  ".join(TEACHERS)
+    txt = _credit_text(teachers)
     rich_draw(d, (W - rich_width(txt, "sans_b", 21)) / 2, 683, txt, "sans_b", 21, INK_SOFT)
 
 
@@ -286,9 +302,9 @@ def dots(im, n, cur):
             x += gap
 
 
-def static_base(label=None, title=None, n_dots=0, cur_dot=0, title_size=38, mode="problem"):
+def static_base(label=None, title=None, n_dots=0, cur_dot=0, title_size=38, mode="problem", teachers=None):
     im = background(mode)
-    credits(im)
+    credits(im, teachers if teachers is not None else teachers_for("kimyo"))
     y = 120
     if label:
         chip = chip_strip(fix_text(label), 22, NAVY, WHITE, tilt=0, padx=20, pady=5, radius=16)
@@ -537,18 +553,19 @@ def build_slides(data):
     n = len(steps)
     slides = []
     mode = "theory" if data.get("mode") == "theory" else "problem"
+    teachers = teachers_for(data.get("subject"))
     unit = "QISM" if mode == "theory" else "QADAM"
 
     # 1. Masala sahifasi (sukut bo'yicha o'chiq: video to'g'ridan-to'g'ri yechimdan boshlanadi)
     if os.getenv("SHOW_PROBLEM", "0") == "1" and data.get("problem_text"):
-        base = static_base("MASALA", data.get("title"), 0, 0, title_size=34)
+        base = static_base("MASALA", data.get("title"), 0, 0, title_size=34, teachers=teachers)
         ptxt = fix_text(data.get("problem_text", ""))
         items = layout_items([{"text": ptxt, "style": "note"}], 250, 640, size=36, left=True, maxw=1100)
         slides.append(Slide(base, items, hold=max(3.0, 0.04 * len(ptxt)), reveal=[1.0]))
 
     # 2. Qadamlar: chapda sahna, o'ngda tenglamalar (sahna bo'lmasa, butun kenglikda)
     for i, st in enumerate(steps):
-        base = static_base(st.get("label", f"{i + 1}-{unit}"), st.get("title"), n, i, mode=mode)
+        base = static_base(st.get("label", f"{i + 1}-{unit}"), st.get("title"), n, i, mode=mode, teachers=teachers)
         scene = st.get("scene") if st.get("scene") in SCENES else None
         if scene:
             items = layout_items(st.get("lines", []), 250, 640, size=38, cx=930, maxw=600)
@@ -560,7 +577,7 @@ def build_slides(data):
     # 3. Qoidalar (2 ustun)
     rules = data.get("rules") or []
     if rules:
-        base = static_base("QOIDALAR" if mode == "problem" else "XULOSA", "Esda saqlang!", n, max(n - 1, 0), mode=mode)
+        base = static_base("QOIDALAR" if mode == "problem" else "XULOSA", "Esda saqlang!", n, max(n - 1, 0), mode=mode, teachers=teachers)
         rules = rules[:6]
         two = len(rules) > 3
         chips = []
@@ -581,7 +598,7 @@ def build_slides(data):
     # 4. Javoblar (2 ustun)
     answers = data.get("answers") or []
     if answers:
-        base = static_base("JAVOBLAR", "Natijalar", n, max(n - 1, 0), mode=mode)
+        base = static_base("JAVOBLAR", "Natijalar", n, max(n - 1, 0), mode=mode, teachers=teachers)
         cards = []
         for i, a in enumerate(answers[:6]):
             val = wrap(fix_text(a.get("value", "")), "sans_b", 34, 540)
@@ -609,9 +626,9 @@ def build_slides(data):
     mask = Image.new("L", icon.size, 0)
     ImageDraw.Draw(mask).ellipse((0, 0, icon.width - 1, icon.height - 1), fill=255)
     base.paste(icon, ((W - icon.width) // 2, 150), mask)
-    items = [(text_strip("Ustozlar", "serif_b", 30, INK_SOFT), 322)]
+    items = [(text_strip("Ustoz" if len(teachers) == 1 else "Ustozlar", "serif_b", 30, INK_SOFT), 322)]
     y = 372
-    for name in TEACHERS:
+    for name in teachers:
         s = text_strip(name, "serif_b", 50, NAVY, maxw=1100)
         items.append((s, y))
         y += s.height + 8

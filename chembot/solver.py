@@ -8,10 +8,12 @@ import anthropic
 
 MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-5-5")
 
-HEAD = """Sen tajribali kimyo o'qituvchisan. Foydalanuvchi kimyo masalasi yoki nazariy mavzu yuboradi.
+HEAD = """Sen tajribali kimyo va biologiya o'qituvchisan. Foydalanuvchi kimyo yoki biologiya bo'yicha masala
+yoki nazariy mavzu yuboradi. Avval fanni aniqla ("subject": "kimyo" yoki "biologiya").
 Hech narsa so'ramasdan, darhol bajar va FAQAT bitta JSON obyekt qaytar (markdown, izoh, ``` belgilarisiz).
 
-Til: o'zbek (lotin). Formulalarda Unicode indekslarni ishlat: H₂O, Cu(NO₃)₂, Fe²⁺, SO₂↑, →.
+Til: o'zbek (lotin). Kimyoda formulalarda Unicode indekslarni ishlat: H₂O, Cu(NO₃)₂, Fe²⁺, SO₂↑, →.
+Biologiyada (genetika masalalari, hujayra, ekologiya va h.k.) sahna "none" bo'lsin, kimyoviy sahnalarni ishlatma.
 """
 
 PROBLEM_RULES = """MASALA (hisoblash talab qilinadi) bo'lsa: "mode": "problem".
@@ -36,6 +38,7 @@ murakkab gaplarni qisqa, tushunarli qatorlarga aylantir. Matn tartibini imkon qa
 SCHEMA = """JSON sxemasi:
 {
  "mode": "problem | theory",
+ "subject": "kimyo | biologiya",
  "title": "mavzu (2-5 so'z)",
  "problem_text": "masala matni (rasm bo'lsa, undan ko'chirib yoz)",
  "steps": [               // masala: 3-7 qadam; nazariya: 5-8 bo'lim
@@ -93,7 +96,7 @@ def _validate(d):
     return d
 
 
-def solve(problem_text="", image_bytes=None, mode="auto", image_mime="image/jpeg"):
+def solve(problem_text="", image_bytes=None, mode="auto", subject=None, image_mime="image/jpeg"):
     """Sinxron chaqiruv (botda asyncio.to_thread orqali ishlatiladi)."""
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"].strip())
     content = []
@@ -107,6 +110,8 @@ def solve(problem_text="", image_bytes=None, mode="auto", image_mime="image/jpeg
                             + problem_text)
         else:
             problem_text = "Nazariy mavzu (video-dars): " + problem_text
+    if subject:
+        problem_text = f"Fan: {subject}.\n" + problem_text
     content.append({"type": "text", "text": problem_text or "Rasmdagi masalani yech."})
     last = None
     total_in = total_out = 0
@@ -120,6 +125,8 @@ def solve(problem_text="", image_bytes=None, mode="auto", image_mime="image/jpeg
         try:
             data = _validate(_extract_json(raw))
             data["mode"] = mode if mode in ("problem", "theory") else (data.get("mode") if data.get("mode") in ("problem", "theory") else "problem")
+            subj = subject or str(data.get("subject", "")).lower()
+            data["subject"] = "biologiya" if "bio" in subj else "kimyo"
             data["_usage"] = {"input": total_in, "output": total_out}
             return data
         except Exception as e:  # noqa: BLE001
