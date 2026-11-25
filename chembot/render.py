@@ -16,6 +16,7 @@ TEMPLATE = os.path.join(HERE, "assets", "template.png")
 
 W, H = 810, 1080
 FPS = 12
+SPEED = float(os.getenv("VIDEO_SPEED", "1.0"))  # >1 tezroq, <1 sekinroq
 FRAME = (18, 119, 791, 975)  # shablondagi ramka (x0, y0, x1, y1)
 CONTENT_W = 690
 
@@ -446,7 +447,7 @@ def _states(base, items):
 
 def slide_frames(sl: Slide):
     states = _states(sl.base, sl.items)
-    fade = 4
+    fade = 3
     frame_i = 0
 
     def emit(img, t):
@@ -455,11 +456,11 @@ def slide_frames(sl: Slide):
             draw_scene(f, sl.scene, t, sl.params)
         return f
 
-    for _ in range(int(0.9 * FPS)):
+    for _ in range(int(0.5 / SPEED * FPS)):
         yield emit(states[0], frame_i / FPS)
         frame_i += 1
     for k in range(1, len(states)):
-        dur = sl.reveal[k - 1] if sl.reveal else 1.6
+        dur = max(sl.reveal[k - 1] if sl.reveal else 1.0, 0.5)
         for j in range(fade):
             f = (j + 1) / fade
             yield emit(Image.blend(states[k - 1], states[k], f), frame_i / FPS)
@@ -467,13 +468,13 @@ def slide_frames(sl: Slide):
         for _ in range(max(int(dur * FPS) - fade, 0)):
             yield emit(states[k], frame_i / FPS)
             frame_i += 1
-    for _ in range(int(sl.hold * FPS)):
+    for _ in range(int(sl.hold / SPEED * FPS)):
         yield emit(states[-1], frame_i / FPS)
         frame_i += 1
 
 
-def reading_time(text, base=1.0, per_char=0.035):
-    return base + per_char * len(text)
+def reading_time(text, base=0.55, per_char=0.018):
+    return (base + per_char * len(text)) / SPEED
 
 
 def build_slides(data):
@@ -495,7 +496,7 @@ def build_slides(data):
         y0 = 690 if scene else 300
         items = layout_items(st.get("lines", []), y0, 955)
         reveal = [reading_time(fix_text(l.get("text", ""))) for l in st.get("lines", [])]
-        slides.append(Slide(base, items, scene, st.get("scene_params"), hold=2.2, reveal=reveal))
+        slides.append(Slide(base, items, scene, st.get("scene_params"), hold=1.0, reveal=reveal))
 
     # 3. Qoidalar
     rules = data.get("rules") or []
@@ -506,8 +507,8 @@ def build_slides(data):
             s = chip_strip(f"{i + 1}  " + fix_text(r), 31, [LIGHT, MINT, SAND][i % 3], maxw=CONTENT_W, pady=16)
             strips.append((s, y))
             y += s.height + 24
-        slides.append(Slide(base, strips, hold=3.0,
-                            reveal=[reading_time(fix_text(r), 1.2, 0.04) for r in rules[:6]]))
+        slides.append(Slide(base, strips, hold=1.8,
+                            reveal=[reading_time(fix_text(r), 0.7, 0.022) for r in rules[:6]]))
 
     # 4. Javoblar
     answers = data.get("answers") or []
@@ -526,7 +527,7 @@ def build_slides(data):
                 rich_draw(cd, x0 + 20, 44 + 46 * j, ln, "sans_b", 34, INK)
             strips.append((card, y))
             y += card.height + 20
-        slides.append(Slide(base, strips, hold=3.5, reveal=[1.4] * len(strips)))
+        slides.append(Slide(base, strips, hold=2.5, reveal=[0.9 / SPEED] * len(strips)))
 
     # 5. Ustozlar sahifasi
     base = background()
@@ -545,7 +546,7 @@ def build_slides(data):
         y += s.height + 14
     if BRAND_HANDLE:
         items.append((chip_strip(BRAND_HANDLE, 34, ACCENT, WHITE, radius=26, padx=30, pady=12), y + 20))
-    slides.append(Slide(base, items, hold=2.5, reveal=[0.6] + [0.7] * (len(items) - 1)))
+    slides.append(Slide(base, items, hold=1.8, reveal=[0.5] + [0.5] * (len(items) - 1)))
     return slides
 
 
