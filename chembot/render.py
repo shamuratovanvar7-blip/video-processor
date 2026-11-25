@@ -1,5 +1,6 @@
-"""Kimyo "video yechim" renderer: JSON yechim -> vertikal (720x1280) MP4.
+"""Kimyo "video yechim" renderer: JSON yechim -> MP4 (3:4, 810x1080).
 
+Fon: assets/template.png (ko'k to'lqinli "Masala yechimi" shabloni).
 Faqat Pillow + ffmpeg ishlatiladi (brauzer kerak emas).
 """
 import math
@@ -8,30 +9,31 @@ import random
 import re
 import subprocess
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
-W, H = 720, 1280
+HERE = os.path.dirname(os.path.abspath(__file__))
+TEMPLATE = os.path.join(HERE, "assets", "template.png")
+
+W, H = 810, 1080
 FPS = 12
+FRAME = (18, 119, 791, 975)  # shablondagi ramka (x0, y0, x1, y1)
+CONTENT_W = 690
 
-BRAND_NAME = os.getenv("BRAND_NAME", "Anvar domla")
-BRAND_HANDLE = os.getenv("BRAND_HANDLE", "@anvar.domla")
-BRAND_TITLE = os.getenv("BRAND_TITLE", "ANVAR")
-BRAND_SUB = os.getenv("BRAND_SUB", "DOMLA · KIMYO")
+TEACHERS = [t.strip() for t in os.getenv("TEACHERS", "Shamuratov Anvar|Jo'rayev Ahror").split("|") if t.strip()]
+BRAND_HANDLE = os.getenv("BRAND_HANDLE", "").strip()
 
-CREAM = (251, 245, 230)
-GRID = (233, 225, 204)
-INK = (27, 42, 42)
-INK_SOFT = (70, 84, 84)
-GREEN = (15, 61, 58)
-ORANGE = (232, 96, 60)
-YELLOW = (255, 224, 138)
-MINT = (190, 232, 212)
-PEACH = (255, 208, 190)
+NAVY = (16, 58, 110)
+INK = (16, 42, 84)
+INK_SOFT = (62, 82, 112)
+ACCENT = (214, 84, 32)
+LIGHT = (200, 226, 250)
+MINT = (200, 236, 224)
+SAND = (255, 236, 170)
 WHITE = (255, 255, 255)
 
 _FD = "/usr/share/fonts/truetype/dejavu/"
 _FONT_FILES = {
-    "serif_b": [_FD + "DejaVuSerif-Bold.ttf"],
+    "serif_b": [_FD + "DejaVuSerif-Bold.ttf", "/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf"],
     "sans": [_FD + "DejaVuSans.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"],
     "sans_b": [_FD + "DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"],
 }
@@ -79,7 +81,7 @@ def wrap(text, fnt, maxw):
     return lines
 
 
-def text_strip(text, kind, size, fill, align="center", maxw=620, pad=0, line_gap=1.3):
+def text_strip(text, kind, size, fill, align="center", maxw=CONTENT_W, pad=0, line_gap=1.3):
     fnt = font(kind, size)
     lines = wrap(text, fnt, maxw)
     lh = int(size * line_gap)
@@ -93,7 +95,7 @@ def text_strip(text, kind, size, fill, align="center", maxw=620, pad=0, line_gap
     return im
 
 
-def chip_strip(text, size, bg, fg=INK, kind="sans_b", maxw=600, padx=20, pady=10, radius=14, tilt=0.0):
+def chip_strip(text, size, bg, fg=INK, kind="sans_b", maxw=CONTENT_W, padx=22, pady=10, radius=16, tilt=0.0):
     fnt = font(kind, size)
     lines = wrap(text, fnt, maxw - 2 * padx)
     lh = int(size * 1.3)
@@ -101,7 +103,7 @@ def chip_strip(text, size, bg, fg=INK, kind="sans_b", maxw=600, padx=20, pady=10
     bw, bh = int(tw + 2 * padx), lh * len(lines) + 2 * pady
     chip = Image.new("RGBA", (bw + 8, bh + 8), (0, 0, 0, 0))
     d = ImageDraw.Draw(chip)
-    d.rounded_rectangle((4, 7, bw + 4, bh + 7), radius, fill=(0, 0, 0, 30))  # soya
+    d.rounded_rectangle((4, 7, bw + 4, bh + 7), radius, fill=(10, 40, 90, 40))  # soya
     d.rounded_rectangle((4, 4, bw + 4, bh + 4), radius, fill=bg)
     for i, ln in enumerate(lines):
         d.text((4 + (bw - fnt.getlength(ln)) / 2, 4 + pady + i * lh), ln, font=fnt, fill=fg)
@@ -119,15 +121,15 @@ def make_strip(item, size, left=False):
     if style == "equation":
         return text_strip(text, "sans_b", size, INK, al)
     if style == "result":
-        return text_strip(text, "sans_b", size, ORANGE, al)
+        return text_strip(text, "sans_b", size, ACCENT, al)
     if style == "badge":
-        return chip_strip(text, max(size - 8, 18), YELLOW)
+        return chip_strip(text, max(size - 6, 18), LIGHT)
     if style == "box":
-        return chip_strip(text, max(size - 8, 18), GREEN, WHITE)
-    return text_strip(text, "sans", max(size - 6, 18), INK_SOFT, al)
+        return chip_strip(text, max(size - 6, 18), NAVY, WHITE)
+    return text_strip(text, "sans", max(size - 5, 18), INK_SOFT, al)
 
 
-def layout_items(items, y0, y1, size=34, gap=18, left=False):
+def layout_items(items, y0, y1, size=40, gap=24, left=False):
     """Elementlarni [y0,y1] oraliqqa sig'diradigan shriftda joylashtiradi."""
     while True:
         strips = [make_strip(it, size, left) for it in items]
@@ -148,88 +150,60 @@ _bg_cache = {}
 
 
 def background():
-    if "bg" in _bg_cache:
-        return _bg_cache["bg"].copy()
-    im = Image.new("RGB", (W, H), CREAM)
-    blobs = Image.new("RGB", (W, H), CREAM)
-    bd = ImageDraw.Draw(blobs)
-    bd.ellipse((-200, -150, 380, 300), fill=(205, 232, 218))
-    bd.ellipse((420, -120, 900, 260), fill=(200, 230, 212))
-    bd.ellipse((-220, 860, 260, 1320), fill=(255, 230, 160))
-    bd.ellipse((520, 980, 940, 1380), fill=(255, 214, 196))
-    blobs = blobs.filter(ImageFilter.GaussianBlur(90))
-    im = Image.blend(im, blobs, 0.75)
+    if "bg" not in _bg_cache:
+        im = Image.open(TEMPLATE).convert("RGB").resize((W, H), Image.LANCZOS)
+        _bg_cache["bg"] = im
+    return _bg_cache["bg"].copy()
+
+
+def credits(im):
+    if not TEACHERS:
+        return
     d = ImageDraw.Draw(im)
-    for x in range(0, W, 36):
-        d.line((x, 0, x, H), fill=GRID, width=1)
-    for y in range(0, H, 36):
-        d.line((0, y, W, y), fill=GRID, width=1)
-    d.line((54, 0, 54, H), fill=(240, 165, 158), width=2)
-    _bg_cache["bg"] = im
-    return im.copy()
-
-
-def watermark(im):
-    layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    fnt = font("sans_b", 30)
-    for (x, y) in [(60, 300), (330, 760), (80, 1090)]:
-        t = Image.new("RGBA", (360, 50), (0, 0, 0, 0))
-        ImageDraw.Draw(t).text((0, 5), BRAND_HANDLE, font=fnt, fill=(60, 60, 60, 38))
-        t = t.rotate(12, expand=True, resample=Image.BICUBIC)
-        layer.alpha_composite(t, (x, y))
-    im.paste(layer, (0, 0), layer)
-
-
-def header(im):
-    d = ImageDraw.Draw(im)
-    d.rounded_rectangle((30, 34, 188, 62), 6, fill=(255, 240, 236), outline=(235, 120, 110), width=2)
-    d.text((42, 40), "VIDEO YECHIM", font=font("sans_b", 14), fill=(220, 70, 60))
-    # logo
-    d.ellipse((448, 28, 500, 80), fill=GREEN)
-    d.text((461, 38), "⚗", font=font("sans_b", 28), fill=WHITE)
-    d.text((510, 34), BRAND_TITLE, font=font("sans_b", 24), fill=GREEN)
-    d.text((510, 62), BRAND_SUB, font=font("sans_b", 11), fill=ORANGE)
+    txt = "Ustozlar: " + "  ·  ".join(TEACHERS)
+    f = font("sans_b", 20)
+    d.text(((W - f.getlength(txt)) / 2, 1030), txt, font=f, fill=INK_SOFT)
 
 
 def dots(im, n, cur):
     if n <= 0:
         return
     d = ImageDraw.Draw(im)
-    gap, r = 26, 5
-    total = (n - 1) * gap + 28
+    gap, r = 28, 6
+    total = (n - 1) * gap + 34
     x = (W - total) / 2
-    y = 1200
+    y = 1000
     for i in range(n):
         if i == cur:
-            d.rounded_rectangle((x - 2, y - r, x + 26, y + r), r, fill=ORANGE)
-            x += 28 + (gap - 14)
+            d.rounded_rectangle((x - 2, y - r, x + 30, y + r), r, fill=NAVY)
+            x += 34 + (gap - 16)
         else:
-            d.ellipse((x, y - r, x + 2 * r, y + r), fill=GREEN if i < cur else CREAM, outline=GREEN, width=2)
+            d.ellipse((x, y - r, x + 2 * r, y + r), fill=NAVY if i < cur else WHITE, outline=NAVY, width=2)
             x += gap
 
 
-def static_base(label=None, title=None, n_dots=0, cur_dot=0, title_size=34):
+def static_base(label=None, title=None, n_dots=0, cur_dot=0, title_size=38):
     im = background()
-    watermark(im)
-    header(im)
-    y = 120
+    credits(im)
+    y = 150
     if label:
-        chip = chip_strip(fix_text(label), 22, YELLOW, GREEN, tilt=2.0, padx=18, pady=6, radius=6)
+        chip = chip_strip(fix_text(label), 24, NAVY, WHITE, tilt=0, padx=22, pady=7, radius=18)
         im.paste(chip, (0, y), chip)
-        y += chip.height + 4
+        y += chip.height + 6
     if title:
-        s = text_strip(fix_text(title), "serif_b", title_size, GREEN, "center", maxw=640)
-        while s.height > 120 and title_size > 24:
+        s = text_strip(fix_text(title), "serif_b", title_size, NAVY, "center", maxw=700)
+        while s.height > 110 and title_size > 26:
             title_size -= 2
-            s = text_strip(fix_text(title), "serif_b", title_size, GREEN, "center", maxw=640)
+            s = text_strip(fix_text(title), "serif_b", title_size, NAVY, "center", maxw=700)
         im.paste(s, (0, y), s)
     dots(im, n_dots, cur_dot)
     return im
 
 
 # ---------------------------------------------------------------- sahnalar
-SCENE_BOX = (0, 275, W, 705)  # x0,y0,x1,y1
-SW, SH = SCENE_BOX[2] - SCENE_BOX[0], SCENE_BOX[3] - SCENE_BOX[1]
+# Sahnalar 720x430 tuvalga chizilib, keyin bo'sh joyga moslab kichraytiriladi.
+SW, SH = 720, 430
+SCENE_BOX = (0, 255, W, 665)
 
 _COLORS = {
     "blue": (110, 165, 232), "green": (150, 214, 170), "colorless": (214, 232, 240),
@@ -252,11 +226,11 @@ def caption(d, text, cy):
     if not text:
         return
     text = fix_text(text)
-    fnt = font("sans_b", 20)
+    fnt = font("sans_b", 27)
     tw = fnt.getlength(text)
     x = (SW - tw) / 2
-    d.rounded_rectangle((x - 14, cy - 4, x + tw + 14, cy + 30), 8, fill=(255, 255, 255, 190))
-    d.text((x, cy), text, font=fnt, fill=INK_SOFT)
+    d.rounded_rectangle((x - 16, cy - 6, x + tw + 16, cy + 40), 10, fill=(255, 255, 255, 235), outline=LIGHT + (255,), width=2)
+    d.text((x, cy), text, font=fnt, fill=INK)
 
 
 def bubbles(d, t, x0, x1, ybot, ytop, n=14, seed=1, r=(3, 7), speed=0.35):
@@ -288,10 +262,8 @@ def gas_cloud(d, t, cx, cy, color, scale=1.0, seed=3):
 def draw_beaker(d, cx, top, bw, bh, level, liquid, t, p, seed=1):
     x0, x1, bot = cx - bw // 2, cx + bw // 2, top + bh
     ly = bot - int(bh * level)
-    # suyuqlik
     d.rectangle((x0 + 3, ly, x1 - 3, bot - 3), fill=liquid + (235,))
     d.line((x0 + 3, ly, x1 - 3, ly), fill=(255, 255, 255, 200), width=2)
-    # cho'kma / qattiq
     prec = p.get("precipitate")
     if prec:
         k = min(t / 2.0, 1.0)
@@ -305,12 +277,12 @@ def draw_beaker(d, cx, top, bw, bh, level, liquid, t, p, seed=1):
             d.ellipse((sx - 5, bot - 14 - rnd.uniform(0, 8), sx + 5, bot - 6), fill=col(solid, (190, 80, 50)) + (255,))
     if p.get("bubbles", True) and level > 0.2:
         bubbles(d, t, x0 + 14, x1 - 14, bot - 10, ly + 6, seed=seed)
-    # shisha
-    d.line((x0, top - 10, x0, bot), fill=(70, 90, 100, 255), width=4)
-    d.line((x1, top - 10, x1, bot), fill=(70, 90, 100, 255), width=4)
-    d.line((x0, bot, x1, bot), fill=(70, 90, 100, 255), width=4)
-    d.line((x0 - 8, top - 10, x0 + 6, top - 10), fill=(70, 90, 100, 255), width=4)
-    d.line((x1 - 6, top - 10, x1 + 8, top - 10), fill=(70, 90, 100, 255), width=4)
+    g = (70, 90, 100, 255)
+    d.line((x0, top - 10, x0, bot), fill=g, width=4)
+    d.line((x1, top - 10, x1, bot), fill=g, width=4)
+    d.line((x0, bot, x1, bot), fill=g, width=4)
+    d.line((x0 - 8, top - 10, x0 + 6, top - 10), fill=g, width=4)
+    d.line((x1 - 6, top - 10, x1 + 8, top - 10), fill=g, width=4)
 
 
 def scene_beaker(d, t, p):
@@ -319,22 +291,19 @@ def scene_beaker(d, t, p):
     if p.get("gas_color") or p.get("gas"):
         gas_cloud(d, t, cx, top + 20, p.get("gas_color") or "#D9926B")
     if p.get("gas"):
-        d.text((cx + 120, top - 20), fix_text(str(p["gas"])) + "↑", font=font("sans_b", 26), fill=INK)
-    caption(d, p.get("caption"), top + 262)
+        d.text((cx + 120, top - 30), fix_text(str(p["gas"])) + "↑", font=font("sans_b", 34), fill=INK)
+    caption(d, p.get("caption"), top + 270)
 
 
 def scene_test_tube(d, t, p):
-    # shtativ
-    base_y = SH - 55
+    base_y = SH - 70
     d.rectangle((70, base_y, 430, base_y + 12), fill=(80, 90, 96, 255))
     d.rectangle((92, 60, 102, base_y), fill=(80, 90, 96, 255))
     d.rectangle((92, 128, 190, 138), fill=(120, 80, 50, 255))
-    # probirka (qiya)
     tw, th = 64, 260
     tube = Image.new("RGBA", (tw + 20, th + 20), (0, 0, 0, 0))
     td = ImageDraw.Draw(tube)
     td.rounded_rectangle((10, 10, 10 + tw, 10 + th), 30, fill=(235, 245, 250, 150), outline=(70, 90, 100, 255), width=4)
-    td.rectangle((10, 4, 10 + tw, 12), fill=(235, 245, 250, 0))
     rnd = random.Random(7)
     for i in range(30):
         sx, sy = rnd.uniform(20, 10 + tw - 10), rnd.uniform(th - 60, th - 8)
@@ -349,7 +318,6 @@ def scene_test_tube(d, t, p):
     by = ccy + r_ * math.cos(math.radians(ang))
     mx = ccx - r_ * math.sin(math.radians(ang))
     my = ccy - r_ * math.cos(math.radians(ang))
-    # gorelka + alanga
     d.rectangle((bx - 18, by + 40, bx + 18, base_y), fill=(55, 60, 64, 255))
     if p.get("heat", True):
         fl = 1 + 0.18 * math.sin(t * 14) + 0.1 * math.sin(t * 23)
@@ -358,44 +326,40 @@ def scene_test_tube(d, t, p):
             d.polygon([(bx - 14 * sc, by + 40), (bx, by + 40 - h), (bx + 14 * sc, by + 40)], fill=c)
     if p.get("gas"):
         gas_cloud(d, t, mx - 10, my - 5, (200, 200, 205), 0.8, seed=9)
-        d.text((mx + 30, my - 95), fix_text(str(p["gas"])) + "↑", font=font("sans_b", 26), fill=INK)
-    caption(d, p.get("caption"), SH - 38)
+        d.text((mx + 30, my - 100), fix_text(str(p["gas"])) + "↑", font=font("sans_b", 34), fill=INK)
+    caption(d, p.get("caption"), SH - 52)
 
 
 def scene_electrolysis(d, t, p):
-    cx, top, bw, bh = SW // 2, 120, 360, 200
+    cx, top, bw, bh = SW // 2, 100, 360, 190
     liquid = col(p.get("color"), (120, 170, 225))
     draw_beaker(d, cx, top, bw, bh, 0.72, liquid, t, {"bubbles": False})
     ex_c, ex_a = cx - 80, cx + 80
     ytop, ybot = top - 40, top + bh - 28
-    # katod (mis qoplanadi)
     d.rectangle((ex_c - 11, ytop, ex_c + 11, ybot), fill=(150, 150, 155, 255))
     k = min(t / 3.0, 1.0) * float(p.get("progress", 0.6))
     cw = int(12 * k + 2)
     d.rectangle((ex_c - 11 - cw, top + 60, ex_c + 11 + cw, ybot), fill=(205, 110, 60, 255))
-    # anod
     d.rectangle((ex_a - 11, ytop, ex_a + 11, ybot), fill=(45, 45, 50, 255))
     bubbles(d, t, ex_a - 14, ex_a + 14, ybot - 5, top + 62, n=8, seed=4, r=(2, 5))
     bubbles(d, t, ex_c - 14, ex_c + 14, ybot - 5, top + 62, n=4, seed=8, r=(2, 4), speed=0.2)
-    # batareya
-    d.rounded_rectangle((cx - 40, 18, cx + 40, 52), 6, fill=(40, 40, 44, 255))
-    d.text((cx - 28, 20), "–", font=font("sans_b", 26), fill=WHITE)
-    d.text((cx + 12, 20), "+", font=font("sans_b", 26), fill=WHITE)
-    d.line((cx - 30, 18, cx - 30, 8, ex_c, 8, ex_c, ytop), fill=(40, 40, 44, 255), width=3)
-    d.line((cx + 30, 18, cx + 30, 8, ex_a, 8, ex_a, ytop), fill=(40, 40, 44, 255), width=3)
-    f = font("sans_b", 15)
-    d.text((ex_c - 40, top + bh + 12), "KATOD (–)", font=f, fill=INK_SOFT)
-    d.text((ex_a - 36, top + bh + 12), "ANOD (+)", font=f, fill=INK_SOFT)
-    # progress
+    d.rounded_rectangle((cx - 40, 8, cx + 40, 42), 6, fill=(40, 40, 44, 255))
+    d.text((cx - 28, 10), "–", font=font("sans_b", 26), fill=WHITE)
+    d.text((cx + 12, 10), "+", font=font("sans_b", 26), fill=WHITE)
+    d.line((cx - 30, 8, cx - 30, 2, ex_c, 2, ex_c, ytop), fill=(40, 40, 44, 255), width=3)
+    d.line((cx + 30, 8, cx + 30, 2, ex_a, 2, ex_a, ytop), fill=(40, 40, 44, 255), width=3)
+    f = font("sans_b", 22)
+    d.text((ex_c - 52, top + bh + 8), "KATOD (–)", font=f, fill=INK_SOFT)
+    d.text((ex_a - 48, top + bh + 8), "ANOD (+)", font=f, fill=INK_SOFT)
     py = top + bh + 52
-    d.rounded_rectangle((90, py, W - 90, py + 26), 13, fill=(255, 255, 255, 230), outline=GREEN + (255,), width=3)
+    d.rounded_rectangle((90, py, SW - 90, py + 28), 14, fill=(255, 255, 255, 230), outline=NAVY + (255,), width=3)
     frac = min(t / 4.0, 1.0) * float(p.get("progress", 0.6))
     if frac > 0.02:
-        d.rounded_rectangle((92, py + 2, 92 + int((W - 184) * frac), py + 24), 11, fill=ORANGE + (255,))
+        d.rounded_rectangle((92, py + 2, 92 + int((SW - 184) * frac), py + 26), 12, fill=ACCENT + (255,))
     if p.get("progress_label"):
         lbl = fix_text(str(p["progress_label"]))
-        fl = font("sans_b", 18)
-        d.text(((SW - fl.getlength(lbl)) / 2, py + 34), lbl, font=fl, fill=INK)
+        fl = font("sans_b", 26)
+        d.text(((SW - fl.getlength(lbl)) / 2, py + 36), lbl, font=fl, fill=INK)
 
 
 SCENES = {"beaker": scene_beaker, "test_tube": scene_test_tube, "electrolysis": scene_electrolysis}
@@ -409,7 +373,10 @@ def draw_scene(frame, name, t, params):
     dr = ImageDraw.Draw(ov)
     dr.ov = ov
     fn(dr, t, params or {})
-    frame.paste(ov, (SCENE_BOX[0], SCENE_BOX[1]), ov)
+    bw, bh = SCENE_BOX[2] - SCENE_BOX[0], SCENE_BOX[3] - SCENE_BOX[1]
+    k = min(bw / SW, bh / SH)
+    ov = ov.resize((int(SW * k), int(SH * k)), Image.LANCZOS)
+    frame.paste(ov, (SCENE_BOX[0] + (bw - ov.width) // 2, SCENE_BOX[1]), ov)
 
 
 # ---------------------------------------------------------------- slaydlar
@@ -443,8 +410,6 @@ def slide_frames(sl: Slide):
             draw_scene(f, sl.scene, t, sl.params)
         return f
 
-    t0 = 0
-    # boshlang'ich (sarlavha + sahna)
     for _ in range(int(0.9 * FPS)):
         yield emit(states[0], frame_i / FPS)
         frame_i += 1
@@ -473,17 +438,17 @@ def build_slides(data):
 
     # 1. Masala sahifasi (sukut bo'yicha o'chiq: video to'g'ridan-to'g'ri yechimdan boshlanadi)
     if os.getenv("SHOW_PROBLEM", "0") == "1" and data.get("problem_text"):
-        base = static_base("MASALA", data.get("title"), 0, 0, title_size=32)
+        base = static_base("MASALA", data.get("title"), 0, 0, title_size=34)
         ptxt = fix_text(data.get("problem_text", ""))
-        items = layout_items([{"text": ptxt, "style": "note"}], 280, 1120, size=34, left=True)
+        items = layout_items([{"text": ptxt, "style": "note"}], 270, 955, size=34, left=True)
         slides.append(Slide(base, items, hold=max(3.0, 0.04 * len(ptxt)), reveal=[1.0]))
 
     # 2. Qadamlar
     for i, st in enumerate(steps):
         base = static_base(st.get("label", f"{i + 1}-QADAM"), st.get("title"), n, i)
         scene = st.get("scene") if st.get("scene") in SCENES else None
-        y0 = 725 if scene else 300
-        items = layout_items(st.get("lines", []), y0, 1150)
+        y0 = 690 if scene else 300
+        items = layout_items(st.get("lines", []), y0, 955)
         reveal = [reading_time(fix_text(l.get("text", ""))) for l in st.get("lines", [])]
         slides.append(Slide(base, items, scene, st.get("scene_params"), hold=2.2, reveal=reveal))
 
@@ -491,11 +456,11 @@ def build_slides(data):
     rules = data.get("rules") or []
     if rules:
         base = static_base("QOIDALAR", "Esda saqlang!", n, max(n - 1, 0))
-        strips, y = [], 330
+        strips, y = [], 310
         for i, r in enumerate(rules[:6]):
-            s = chip_strip(f"{i + 1}  " + fix_text(r), 25, [YELLOW, MINT, WHITE][i % 3], maxw=620, pady=12)
+            s = chip_strip(f"{i + 1}  " + fix_text(r), 31, [LIGHT, MINT, SAND][i % 3], maxw=CONTENT_W, pady=16)
             strips.append((s, y))
-            y += s.height + 16
+            y += s.height + 24
         slides.append(Slide(base, strips, hold=3.0,
                             reveal=[reading_time(fix_text(r), 1.2, 0.04) for r in rules[:6]]))
 
@@ -503,35 +468,37 @@ def build_slides(data):
     answers = data.get("answers") or []
     if answers:
         base = static_base("JAVOBLAR", "Natijalar", n, max(n - 1, 0))
-        strips, y = [], 330
+        strips, y = [], 310
         for a in answers[:6]:
-            card = Image.new("RGBA", (W, 130), (0, 0, 0, 0))
+            val = wrap(fix_text(a.get("value", "")), font("sans_b", 34), CONTENT_W - 60)
+            ch = 52 + 44 * len(val) + 14
+            card = Image.new("RGBA", (W, ch + 12), (0, 0, 0, 0))
             cd = ImageDraw.Draw(card)
-            val = wrap(fix_text(a.get("value", "")), font("sans_b", 30), 560)
-            ch = 40 + 40 * len(val) + 14
-            cd.rounded_rectangle((52, 6, W - 52, 6 + ch), 8, fill=WHITE, outline=GREEN, width=3)
-            cd.text((70, 14), fix_text(a.get("label", "")), font=font("sans", 15), fill=INK_SOFT)
+            x0, x1 = (W - CONTENT_W) // 2, (W + CONTENT_W) // 2
+            cd.rounded_rectangle((x0, 6, x1, 6 + ch), 12, fill=WHITE, outline=NAVY, width=3)
+            cd.text((x0 + 20, 14), fix_text(a.get("label", "")), font=font("sans", 20), fill=INK_SOFT)
             for j, ln in enumerate(val):
-                cd.text((70, 38 + 40 * j), ln, font=font("sans_b", 30), fill=INK)
-            card = card.crop((0, 0, W, ch + 12))
+                cd.text((x0 + 20, 46 + 44 * j), ln, font=font("sans_b", 34), fill=INK)
             strips.append((card, y))
-            y += card.height + 10
+            y += card.height + 20
         slides.append(Slide(base, strips, hold=3.5, reveal=[1.4] * len(strips)))
 
-    # 5. Brend sahifasi
+    # 5. Ustozlar sahifasi
     base = background()
-    watermark(base)
     d = ImageDraw.Draw(base)
-    d.ellipse((W // 2 - 190, 480, W // 2 - 130, 540), fill=GREEN)
-    d.text((W // 2 - 175, 490), "⚗", font=font("sans_b", 36), fill=WHITE)
-    d.text((W // 2 - 110, 480), BRAND_TITLE, font=font("sans_b", 52), fill=GREEN)
-    d.text((W // 2 - 108, 538), BRAND_SUB, font=font("sans_b", 16), fill=ORANGE)
-    items = []
-    s1 = text_strip("Kimyo o'qituvchisi", "serif_b", 28, INK_SOFT)
-    s2 = text_strip(BRAND_NAME, "serif_b", 44, GREEN)
-    s3 = chip_strip(BRAND_HANDLE, 34, ORANGE, WHITE, radius=26, padx=30, pady=12)
-    items = [(s1, 640), (s2, 685), (s3, 770)]
-    slides.append(Slide(base, items, hold=2.5, reveal=[0.6, 0.6, 0.8]))
+    cy = 330
+    d.ellipse((W // 2 - 62, cy - 62, W // 2 + 62, cy + 62), fill=NAVY)
+    ic = font("sans_b", 64)
+    d.text((W // 2 - ic.getlength("⚗") / 2, cy - 42), "⚗", font=ic, fill=WHITE)
+    items = [(text_strip("Ustozlar", "serif_b", 30, INK_SOFT), 430)]
+    y = 490
+    for name in TEACHERS:
+        s = text_strip(name, "serif_b", 48, NAVY, maxw=700)
+        items.append((s, y))
+        y += s.height + 14
+    if BRAND_HANDLE:
+        items.append((chip_strip(BRAND_HANDLE, 34, ACCENT, WHITE, radius=26, padx=30, pady=12), y + 20))
+    slides.append(Slide(base, items, hold=2.5, reveal=[0.6] + [0.7] * (len(items) - 1)))
     return slides
 
 
