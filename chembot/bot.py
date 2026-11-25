@@ -28,9 +28,11 @@ _stat = {"requests": 0, "input": 0, "output": 0}
 _users = {}  # id -> {"name", "username", "count"}
 _sem = asyncio.Semaphore(int(os.getenv("MAX_PARALLEL", "2")))
 
-HELP = ("Salom! Men kimyo masalalarini video yechimga aylantiraman.\n\n"
-        "Masala matnini (yoki rasmini) yuboring: boshqa hech narsa kerak emas. "
-        "Men o'zim yechib, vertikal video tayyorlab beraman (~1-2 daqiqa).")
+HELP = ("Salom! Men kimyo masalalari va nazariyasini video darsga aylantiraman.\n\n"
+        "• Masala matnini (yoki rasmini) yuboring: o'zim yechib, video tayyorlayman.\n"
+        "• Mavzu yozing (masalan: «Mol nima?»): nazariya videosi tayyorlayman.\n\n"
+        "Aniq tanlash uchun:\n/nazariya Alkanlar\n/masala 10 g CaCO3 parchalansa...\n\n"
+        "Video ~1-2 daqiqada tayyor bo'ladi.")
 
 
 def rate_ok(uid):
@@ -63,6 +65,22 @@ async def stat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "Aniq narx: platform.claude.com → Расходы / Usage.")
 
 
+async def cmd_theory(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    topic = " ".join(ctx.args).strip()
+    if not topic:
+        await update.message.reply_text("Mavzuni yozing, masalan:\n/nazariya Mol va Avogadro soni")
+        return
+    await handle(update, ctx, "theory", topic)
+
+
+async def cmd_problem(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    text = " ".join(ctx.args).strip()
+    if not text:
+        await update.message.reply_text("Masala matnini yozing, masalan:\n/masala 10 g CaCO3 parchalansa, necha l CO2 hosil bo'ladi?")
+        return
+    await handle(update, ctx, "problem", text)
+
+
 async def users(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if ALLOWED and update.effective_user.id not in ALLOWED:
         return
@@ -74,7 +92,7 @@ async def users(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Foydalanuvchilar (qayta ishga tushganidan beri):\n" + "\n".join(rows[:40]))
 
 
-async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE, mode="auto", text_override=None):
     msg, uid = update.message, update.effective_user.id
     u = update.effective_user
     rec = _users.setdefault(uid, {"name": u.full_name, "username": u.username or "-", "count": 0})
@@ -83,7 +101,7 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if ALLOWED and uid not in ALLOWED:
         await msg.reply_text(f"Kechirasiz, sizga ruxsat berilmagan. (ID: {uid})")
         return
-    text = (msg.text or msg.caption or "").strip()
+    text = (text_override if text_override is not None else (msg.text or msg.caption or "")).strip()
     img = None
     if msg.photo:
         f = await msg.photo[-1].get_file()
@@ -94,11 +112,11 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("Soatlik limitga yetdingiz, birozdan so'ng urinib ko'ring.")
         return
 
-    status = await msg.reply_text("⏳ Masala yechilmoqda...")
+    status = await msg.reply_text("⏳ Mavzu tayyorlanmoqda..." if mode == "theory" else "⏳ Masala yechilmoqda...")
     async with _sem:
         try:
             await ctx.bot.send_chat_action(msg.chat_id, ChatAction.TYPING)
-            data = await asyncio.to_thread(solver.solve, text, img)
+            data = await asyncio.to_thread(solver.solve, text, img, mode)
             u = data.pop("_usage", {})
             _stat["requests"] += 1
             _stat["input"] += u.get("input", 0)
@@ -112,7 +130,7 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                 with open(out, "rb") as fh:
                     await msg.reply_video(fh, width=render.W, height=render.H,
                                           supports_streaming=True,
-                                          caption=data.get("title", "Video yechim"))
+                                          caption=data.get("title", "Video"))
             await status.delete()
         except Exception as e:  # noqa: BLE001
             log.exception("xatolik")
@@ -132,6 +150,8 @@ def main():
     app.add_handler(CommandHandler("stat", stat))
     app.add_handler(CommandHandler("id", myid))
     app.add_handler(CommandHandler("users", users))
+    app.add_handler(CommandHandler(["nazariya", "theory"], cmd_theory))
+    app.add_handler(CommandHandler(["masala", "problem"], cmd_problem))
     app.add_handler(MessageHandler((filters.TEXT & ~filters.COMMAND) | filters.PHOTO, handle))
     app.run_polling()
 

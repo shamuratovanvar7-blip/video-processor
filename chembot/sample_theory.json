@@ -1,0 +1,26 @@
+{
+ "mode": "theory",
+ "title": "Mol va Avogadro soni",
+ "problem_text": "",
+ "steps": [
+  {"label": "1-QISM", "title": "Mol nima?", "scene": "none",
+   "lines": [
+     {"text": "Mol — modda miqdorining birligi", "style": "box"},
+     {"text": "1 mol = 6,02·10²³ ta zarracha", "style": "result"},
+     {"text": "Zarracha: atom, molekula yoki ion", "style": "note"}]},
+  {"label": "2-QISM", "title": "Molyar massa", "scene": "none",
+   "lines": [
+     {"text": "M — 1 mol moddaning massasi (g/mol)", "style": "badge"},
+     {"text": "n = m / M", "style": "equation"},
+     {"text": "M(H₂O) = 2·1 + 16 = 18 g/mol", "style": "equation"},
+     {"text": "Son jihatdan nisbiy massaga teng", "style": "note"}]},
+  {"label": "3-QISM", "title": "Molyar hajm", "scene": "beaker",
+   "scene_params": {"color": "colorless", "gas": "CO₂", "gas_color": "#B9C7D6", "bubbles": true, "caption": "1 mol gaz = 22,4 l"},
+   "lines": [
+     {"text": "n.sh. da 1 mol gaz = 22,4 l", "style": "box"},
+     {"text": "n = V / Vₘ", "style": "equation"},
+     {"text": "Vₘ = 22,4 l/mol", "style": "note"}]}
+ ],
+ "rules": ["1 mol = 6,02·10²³ ta zarracha", "n = m / M", "n.sh. da Vₘ = 22,4 l/mol"],
+ "answers": []
+}

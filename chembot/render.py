@@ -73,7 +73,7 @@ def fix_text(s):
     return s
 
 
-_SUBM = dict(zip("₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎", "0123456789+-=()"))
+_SUBM = dict(zip("₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₒₓₕₖₗₘₙₚₛₜ", "0123456789+-=()aeoxhklmnpst"))
 _SUPM = dict(zip("⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾", "0123456789+-=()"))
 _FALLBACK = set("≈≠≤≥′⇄⇌↔⚗")
 
@@ -229,9 +229,10 @@ def _clean(piece):
     return piece
 
 
-def background():
+def background(mode="problem"):
     """Albom (16:9) fon: shablon bezaklari (sarlavha, to'lqin, molekula) + ramka."""
-    if "bg" not in _bg_cache:
+    key = "bg_" + mode
+    if key not in _bg_cache:
         o = _orig()
         im = Image.new("RGB", (W, H), (254, 254, 254))
         _put(im, _clean(o.crop((0, 0, 190, 240))), (0, 0), 0.62)                    # chap yuqori to'lqin
@@ -247,11 +248,17 @@ def background():
         pw, ph = int(pill.width * sc), int(pill.height * sc)
         px, py = (W - pw) // 2, 14
         im.paste(pill.resize((pw, ph), Image.LANCZOS), (px, py))
+        if mode == "theory":  # "Masala yechimi" yozuvini "Nazariya" ga almashtiramiz
+            rx0, rx1 = px + int(177 * sc), px + int(668 * sc)
+            d.rectangle((rx0, py + int(16 * sc), rx1, py + int(102 * sc)), fill=NAVY)
+            title = "Nazariya"
+            tw = rich_width(title, "serif_b", 40)
+            rich_draw(d, (rx0 + rx1) / 2 - tw / 2, py + (ph - 40 * 1.3) / 2 - 2, title, "serif_b", 40, WHITE)
         ly = py + ph // 2 + 2
         d.line((150, ly, px - 14, ly), fill=(25, 82, 135), width=3)
         d.line((px + pw + 14, ly, W - 150, ly), fill=(25, 82, 135), width=3)
-        _bg_cache["bg"] = im
-    return _bg_cache["bg"].copy()
+        _bg_cache[key] = im
+    return _bg_cache[key].copy()
 
 
 def credits(im):
@@ -279,8 +286,8 @@ def dots(im, n, cur):
             x += gap
 
 
-def static_base(label=None, title=None, n_dots=0, cur_dot=0, title_size=38):
-    im = background()
+def static_base(label=None, title=None, n_dots=0, cur_dot=0, title_size=38, mode="problem"):
+    im = background(mode)
     credits(im)
     y = 120
     if label:
@@ -529,6 +536,8 @@ def build_slides(data):
     steps = data.get("steps", [])
     n = len(steps)
     slides = []
+    mode = "theory" if data.get("mode") == "theory" else "problem"
+    unit = "QISM" if mode == "theory" else "QADAM"
 
     # 1. Masala sahifasi (sukut bo'yicha o'chiq: video to'g'ridan-to'g'ri yechimdan boshlanadi)
     if os.getenv("SHOW_PROBLEM", "0") == "1" and data.get("problem_text"):
@@ -539,7 +548,7 @@ def build_slides(data):
 
     # 2. Qadamlar: chapda sahna, o'ngda tenglamalar (sahna bo'lmasa, butun kenglikda)
     for i, st in enumerate(steps):
-        base = static_base(st.get("label", f"{i + 1}-QADAM"), st.get("title"), n, i)
+        base = static_base(st.get("label", f"{i + 1}-{unit}"), st.get("title"), n, i, mode=mode)
         scene = st.get("scene") if st.get("scene") in SCENES else None
         if scene:
             items = layout_items(st.get("lines", []), 250, 640, size=38, cx=930, maxw=600)
@@ -551,7 +560,7 @@ def build_slides(data):
     # 3. Qoidalar (2 ustun)
     rules = data.get("rules") or []
     if rules:
-        base = static_base("QOIDALAR", "Esda saqlang!", n, max(n - 1, 0))
+        base = static_base("QOIDALAR" if mode == "problem" else "XULOSA", "Esda saqlang!", n, max(n - 1, 0), mode=mode)
         rules = rules[:6]
         two = len(rules) > 3
         chips = []
@@ -572,7 +581,7 @@ def build_slides(data):
     # 4. Javoblar (2 ustun)
     answers = data.get("answers") or []
     if answers:
-        base = static_base("JAVOBLAR", "Natijalar", n, max(n - 1, 0))
+        base = static_base("JAVOBLAR", "Natijalar", n, max(n - 1, 0), mode=mode)
         cards = []
         for i, a in enumerate(answers[:6]):
             val = wrap(fix_text(a.get("value", "")), "sans_b", 34, 540)
@@ -594,7 +603,7 @@ def build_slides(data):
         slides.append(Slide(base, strips, hold=2.5, reveal=[0.9 / SPEED] * len(strips)))
 
     # 5. Ustozlar sahifasi
-    base = background()
+    base = background(mode)
     icon = _orig().crop((231, 35, 325, 137))
     icon = icon.resize((int(icon.width * 1.5), int(icon.height * 1.5)), Image.LANCZOS)
     mask = Image.new("L", icon.size, 0)
