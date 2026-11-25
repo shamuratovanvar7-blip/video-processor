@@ -76,9 +76,12 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
                                           supports_streaming=True,
                                           caption=data.get("title", "Video yechim"))
             await status.delete()
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
             log.exception("xatolik")
-            await status.edit_text("❌ Xatolik yuz berdi. Masalani aniqroq yozib, qayta yuboring.")
+            detail = f"{type(e).__name__}: {e}"[:300]
+            await status.edit_text(
+                "❌ Xatolik yuz berdi. Masalani aniqroq yozib, qayta yuboring.\n\n"
+                f"Texnik sabab: {detail}")
 
 
 def main():
