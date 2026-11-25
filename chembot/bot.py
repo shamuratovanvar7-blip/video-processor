@@ -89,7 +89,7 @@ def main():
         if not os.getenv(name):
             raise SystemExit(f"Muhit o'zgaruvchisi topilmadi: {name}")
     log.info("Bot ishga tushmoqda. Ruxsat berilgan ID lar: %s", sorted(ALLOWED) or "hamma")
-    app = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"]).build()
+    app = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"].strip()).build()
     app.add_handler(CommandHandler(["start", "help"], start))
     app.add_handler(MessageHandler((filters.TEXT & ~filters.COMMAND) | filters.PHOTO, handle))
     app.run_polling()

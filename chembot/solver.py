@@ -67,7 +67,7 @@ def _validate(d):
 
 def solve(problem_text="", image_bytes=None, image_mime="image/jpeg"):
     """Sinxron chaqiruv (botda asyncio.to_thread orqali ishlatiladi)."""
-    client = anthropic.Anthropic()  # ANTHROPIC_API_KEY muhit o'zgaruvchisidan
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"].strip())
     content = []
     if image_bytes:
         content.append({"type": "image", "source": {
