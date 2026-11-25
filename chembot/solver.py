@@ -26,6 +26,11 @@ asosiy tushunchalar, formula/qonunlar, misollar, reaksiya tenglamalari, qo'llani
 Har bo'limda 2-5 qisqa qator (<= 50 belgi). Uslub: ta'rif -> "box", atama -> "badge",
 formula/tenglama -> "equation", eng muhim qoida -> "result", izoh -> "note".
 "problem_text" o'rniga bo'sh qoldir, "answers" bo'sh ro'yxat, "rules" ga 3-5 ta xulosa ("Esda saqlang").
+
+AGAR foydalanuvchi o'zining nazariy MATNINI yuborgan bo'lsa (uzun matn): videoni aynan SHU MATN asosida tuz.
+Matndagi ta'rif, qoida, formula, misol va raqamlarni saqla, o'zingdan ziddiyatli yoki yangi ma'lumot qo'shma.
+Matnni mantiqiy bo'limlarga bo'l (matn uzunligiga qarab 5-12 bo'lim), ortiqcha takrorni qisqartir,
+murakkab gaplarni qisqa, tushunarli qatorlarga aylantir. Matn tartibini imkon qadar saqla.
 """
 
 SCHEMA = """JSON sxemasi:
@@ -97,7 +102,11 @@ def solve(problem_text="", image_bytes=None, mode="auto", image_mime="image/jpeg
             "type": "base64", "media_type": image_mime,
             "data": base64.b64encode(image_bytes).decode()}})
     if mode == "theory" and problem_text:
-        problem_text = "Nazariy mavzu (video-dars): " + problem_text
+        if len(problem_text) > 250:
+            problem_text = ("Quyidagi nazariy matn asosida video-dars tayyorla (matndan chetga chiqma):\n\n"
+                            + problem_text)
+        else:
+            problem_text = "Nazariy mavzu (video-dars): " + problem_text
     content.append({"type": "text", "text": problem_text or "Rasmdagi masalani yech."})
     last = None
     total_in = total_out = 0
