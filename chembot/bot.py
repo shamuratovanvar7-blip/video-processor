@@ -25,6 +25,7 @@ ALLOWED = {int(x) for x in re.findall(r"\d+", os.getenv("ALLOWED_USERS", ""))}
 MAX_PER_HOUR = int(os.getenv("MAX_PER_HOUR", "10"))
 _hist = defaultdict(deque)
 _stat = {"requests": 0, "input": 0, "output": 0}
+_users = {}  # id -> {"name", "username", "count"}
 _sem = asyncio.Semaphore(int(os.getenv("MAX_PARALLEL", "2")))
 
 HELP = ("Salom! Men kimyo masalalarini video yechimga aylantiraman.\n\n"
@@ -57,8 +58,23 @@ async def stat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "Aniq narx: platform.claude.com → Расходы / Usage.")
 
 
+async def users(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if ALLOWED and update.effective_user.id not in ALLOWED:
+        return
+    if not _users:
+        await update.message.reply_text("Hali hech kim yozmagan (bot qayta ishga tushganidan beri).")
+        return
+    rows = [f"{i}. {r['name']} (@{r['username']}) id={uid}, xabar: {r['count']}"
+            for i, (uid, r) in enumerate(sorted(_users.items(), key=lambda x: -x[1]["count"]), 1)]
+    await update.message.reply_text("Foydalanuvchilar (qayta ishga tushganidan beri):\n" + "\n".join(rows[:40]))
+
+
 async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg, uid = update.message, update.effective_user.id
+    u = update.effective_user
+    rec = _users.setdefault(uid, {"name": u.full_name, "username": u.username or "-", "count": 0})
+    rec["count"] += 1
+    log.info("Foydalanuvchi: id=%s ism=%s username=@%s xabar#%s", uid, u.full_name, u.username, rec["count"])
     if ALLOWED and uid not in ALLOWED:
         await msg.reply_text("Kechirasiz, sizga ruxsat berilmagan.")
         return
@@ -109,6 +125,7 @@ def main():
     app = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"].strip()).build()
     app.add_handler(CommandHandler(["start", "help"], start))
     app.add_handler(CommandHandler("stat", stat))
+    app.add_handler(CommandHandler("users", users))
     app.add_handler(MessageHandler((filters.TEXT & ~filters.COMMAND) | filters.PHOTO, handle))
     app.run_polling()
 
