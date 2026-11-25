@@ -1,0 +1,41 @@
+{
+ "title": "Misdan elektrolizgacha",
+ "problem_text": "Mis(I) oksidi va mis(I) sulfididan iborat aralashma havosiz muhitda qizdirildi va natijada oksid hamda metalldan iborat 67,2 g aralashma olindi. Hosil bo'lgan aralashma 408 g 63% li HNO₃ eritmasiga solinganda 1,6 mol qo'ng'ir gaz ajraldi va HNO₃ ortib qoldi. So'ngra eritmaga 22,4 g Fe qo'shildi, bunda N₂ ajralib chiqdi va HNO₃ to'liq sarflandi. Keyinchalik Cu(NO₃)₂ tarkibidagi misning o'rnini Fe to'liq egalladi. Hosil bo'lgan tuzlar eritmasi 6,7 A tok kuchi bilan 12 soat davomida elektroliz qilindi.",
+ "steps": [
+  {"label": "1-QADAM", "title": "Havosiz qizdiramiz", "scene": "test_tube",
+   "scene_params": {"caption": "qizil Cu₂O + qora Cu₂S", "gas": "SO₂"},
+   "lines": [
+     {"text": "→ mis + ortgan Cu₂O", "style": "badge"},
+     {"text": "2Cu₂O + Cu₂S → 6Cu + SO₂↑", "style": "equation"},
+     {"text": "Qolgan 67,2 g = Cu + ortiqcha Cu₂O", "style": "result"}]},
+  {"label": "2-QADAM", "title": "Aralashmani topamiz", "scene": "none",
+   "lines": [
+     {"text": "Cu = a mol,  Cu₂O = b mol", "style": "badge"},
+     {"text": "Cu + 4HNO₃ → Cu(NO₃)₂ + 2NO₂ + 2H₂O", "style": "equation"},
+     {"text": "Cu₂O + 6HNO₃ → 2Cu(NO₃)₂ + 2NO₂ + 3H₂O", "style": "equation"},
+     {"text": "64a + 144b = 67,2", "style": "equation"}]},
+  {"label": "3-QADAM", "title": "Konsentrlangan nitrat kislota", "scene": "beaker",
+   "scene_params": {"color": "blue", "gas_color": "#D9926B", "bubbles": true, "caption": "qo'ng'ir gaz = NO₂"},
+   "lines": [
+     {"text": "n(HNO₃) jami = 408·0,63/63 = 4,08 mol", "style": "note"},
+     {"text": "Sarflandi: 4·0,6 + 6·0,2 = 3,6 mol", "style": "note"},
+     {"text": "Ortib qoldi: 0,48 mol", "style": "result"}]},
+  {"label": "6-QADAM", "title": "Elektroliz", "scene": "electrolysis",
+   "scene_params": {"progress": 1.0, "progress_label": "3,0 / 3 mol e"},
+   "lines": [
+     {"text": "n(e) = I·t / 26,8 = 6,7·12 / 26,8 = 3 mol", "style": "equation"},
+     {"text": "Katod: Cu 0,8 mol = 51,2 g", "style": "note"},
+     {"text": "Katod: Fe 0,4 mol = 22,4 g", "style": "note"},
+     {"text": "Katod: H₂ 0,3 mol = 6,72 l", "style": "note"}]}
+ ],
+ "rules": [
+  "Kons. HNO₃ + Cu, Cu₂O → NO₂ (qo'ng'ir gaz)",
+  "Suyul. HNO₃ + Fe → N₂, NH₄NO₃ ...",
+  "Fe ortiqcha bo'lsa → Fe²⁺ (Fe³⁺ emas)",
+  "Katodda: Cu²⁺ → Fe²⁺ → H₂O (H₂)"],
+ "answers": [
+  {"label": "Boshlang'ich", "value": "Cu₂O 57,6 g + Cu₂S 16 g = 73,6 g"},
+  {"label": "Qizdirilgach", "value": "Cu 0,6 mol + Cu₂O 0,2 mol"},
+  {"label": "HNO₃ ortig'i", "value": "0,48 mol"},
+  {"label": "N₂", "value": "0,04 mol = 0,896 l"}]
+}
