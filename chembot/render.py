@@ -14,11 +14,11 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE = os.path.join(HERE, "assets", "template.png")
 
-W, H = 810, 1080
+W, H = 1280, 720
 FPS = 12
 SPEED = float(os.getenv("VIDEO_SPEED", "1.0"))  # >1 tezroq, <1 sekinroq
-FRAME = (18, 119, 791, 975)  # shablondagi ramka (x0, y0, x1, y1)
-CONTENT_W = 690
+FRAME = (20, 112, 1260, 650)  # ramka (x0, y0, x1, y1)
+CONTENT_W = 1100
 
 TEACHERS = [t.strip() for t in os.getenv("TEACHERS", "Shamuratov Anvar|Jo'rayev Ahror").split("|") if t.strip()]
 BRAND_HANDLE = os.getenv("BRAND_HANDLE", "").strip()
@@ -133,7 +133,8 @@ def wrap(text, kind, size, maxw):
     return lines
 
 
-def text_strip(text, kind, size, fill, align="center", maxw=CONTENT_W, pad=0, line_gap=1.38):
+def text_strip(text, kind, size, fill, align="center", maxw=CONTENT_W, pad=0, line_gap=1.38, cx=None):
+    cx = W / 2 if cx is None else cx
     lines = wrap(text, kind, size, maxw)
     lh = int(size * line_gap)
     h = lh * len(lines) + pad * 2
@@ -141,12 +142,13 @@ def text_strip(text, kind, size, fill, align="center", maxw=CONTENT_W, pad=0, li
     d = ImageDraw.Draw(im)
     for i, ln in enumerate(lines):
         tw = rich_width(ln, kind, size)
-        x = (W - tw) / 2 if align == "center" else (W - maxw) / 2
+        x = cx - tw / 2 if align == "center" else cx - maxw / 2
         rich_draw(d, x, pad + i * lh, ln, kind, size, fill)
     return im
 
 
-def chip_strip(text, size, bg, fg=INK, kind="sans_b", maxw=CONTENT_W, padx=22, pady=10, radius=16, tilt=0.0):
+def chip_strip(text, size, bg, fg=INK, kind="sans_b", maxw=CONTENT_W, padx=22, pady=10, radius=16, tilt=0.0, cx=None):
+    cx = W / 2 if cx is None else cx
     lines = wrap(text, kind, size, maxw - 2 * padx)
     lh = int(size * 1.38)
     tw = max(rich_width(l, kind, size) for l in lines)
@@ -160,29 +162,29 @@ def chip_strip(text, size, bg, fg=INK, kind="sans_b", maxw=CONTENT_W, padx=22, p
     if tilt:
         chip = chip.rotate(tilt, expand=True, resample=Image.BICUBIC)
     strip = Image.new("RGBA", (W, chip.height + 4), (0, 0, 0, 0))
-    strip.alpha_composite(chip, ((W - chip.width) // 2, 2))
+    strip.alpha_composite(chip, (int(cx - chip.width / 2), 2))
     return strip
 
 
-def make_strip(item, size, left=False):
+def make_strip(item, size, left=False, cx=None, maxw=CONTENT_W):
     style = item.get("style", "note")
     text = fix_text(item.get("text", ""))
     al = "left" if left else "center"
     if style == "equation":
-        return text_strip(text, "sans_b", size, INK, al)
+        return text_strip(text, "sans_b", size, INK, al, maxw=maxw, cx=cx)
     if style == "result":
-        return text_strip(text, "sans_b", size, ACCENT, al)
+        return text_strip(text, "sans_b", size, ACCENT, al, maxw=maxw, cx=cx)
     if style == "badge":
-        return chip_strip(text, max(size - 6, 18), LIGHT)
+        return chip_strip(text, max(size - 6, 18), LIGHT, maxw=maxw, cx=cx)
     if style == "box":
-        return chip_strip(text, max(size - 6, 18), NAVY, WHITE)
-    return text_strip(text, "sans", max(size - 5, 18), INK_SOFT, al)
+        return chip_strip(text, max(size - 6, 18), NAVY, WHITE, maxw=maxw, cx=cx)
+    return text_strip(text, "sans", max(size - 5, 18), INK_SOFT, al, maxw=maxw, cx=cx)
 
 
-def layout_items(items, y0, y1, size=40, gap=24, left=False):
+def layout_items(items, y0, y1, size=40, gap=20, left=False, cx=None, maxw=CONTENT_W):
     """Elementlarni [y0,y1] oraliqqa sig'diradigan shriftda joylashtiradi."""
     while True:
-        strips = [make_strip(it, size, left) for it in items]
+        strips = [make_strip(it, size, left, cx, maxw) for it in items]
         total = sum(s.height for s in strips) + gap * max(len(strips) - 1, 0)
         if total <= (y1 - y0) or size <= 18:
             break
@@ -199,9 +201,55 @@ def layout_items(items, y0, y1, size=40, gap=24, left=False):
 _bg_cache = {}
 
 
+def _orig():
+    if "orig" not in _bg_cache:
+        _bg_cache["orig"] = Image.open(TEMPLATE).convert("RGB")
+    return _bg_cache["orig"]
+
+
+def _put(canvas, piece, xy, scale):
+    """Shablon bo'lagini ko'paytirish (multiply) orqali qo'yadi: oq fon ko'rinmaydi."""
+    from PIL import ImageChops
+    piece = piece.resize((int(piece.width * scale), int(piece.height * scale)), Image.LANCZOS)
+    x, y = xy
+    x0, y0 = max(x, 0), max(y, 0)
+    region = canvas.crop((x0, y0, x0 + piece.width, y0 + piece.height))
+    piece = piece.crop((x0 - x, y0 - y, x0 - x + region.width, y0 - y + region.height))
+    canvas.paste(ImageChops.multiply(region, piece), (x0, y0))
+
+
+def _clean(piece):
+    """Bo'lakdagi to'q ko'k (sarlavha chizig'i) piksellarni oq qiladi, och ko'k to'lqin qoladi."""
+    px = piece.load()
+    for yy in range(piece.height):
+        for xx in range(piece.width):
+            r, g, b = px[xx, yy]
+            if r < 150:
+                px[xx, yy] = (254, 254, 254)
+    return piece
+
+
 def background():
+    """Albom (16:9) fon: shablon bezaklari (sarlavha, to'lqin, molekula) + ramka."""
     if "bg" not in _bg_cache:
-        im = Image.open(TEMPLATE).convert("RGB").resize((W, H), Image.LANCZOS)
+        o = _orig()
+        im = Image.new("RGB", (W, H), (254, 254, 254))
+        _put(im, _clean(o.crop((0, 0, 190, 240))), (0, 0), 0.62)                    # chap yuqori to'lqin
+        _put(im, _clean(o.crop((950, 0, 1086, 150))), (W - int(136 * 0.62), 0), 0.62)  # o'ng yuqori molekula
+        _put(im, _clean(o.crop((680, 1250, 1086, 1448))), (W - int(406 * 0.6), H - int(198 * 0.6)), 0.6)  # pastki o'ng to'lqin
+        _put(im, _clean(o.crop((0, 1280, 200, 1448))), (0, H - int(168 * 0.6)), 0.6)  # pastki chap molekula
+        d = ImageDraw.Draw(im)
+        x0, y0, x1, y1 = FRAME
+        d.rounded_rectangle((x0, y0, x1, y1), 26, fill=(253, 253, 253), outline=(25, 82, 135), width=4)
+        # sarlavha (kolba + "Masala yechimi")
+        pill = o.crop((195, 22, 905, 142))
+        sc = 0.72
+        pw, ph = int(pill.width * sc), int(pill.height * sc)
+        px, py = (W - pw) // 2, 14
+        im.paste(pill.resize((pw, ph), Image.LANCZOS), (px, py))
+        ly = py + ph // 2 + 2
+        d.line((150, ly, px - 14, ly), fill=(25, 82, 135), width=3)
+        d.line((px + pw + 14, ly, W - 150, ly), fill=(25, 82, 135), width=3)
         _bg_cache["bg"] = im
     return _bg_cache["bg"].copy()
 
@@ -211,21 +259,21 @@ def credits(im):
         return
     d = ImageDraw.Draw(im)
     txt = "Ustozlar: " + "  ·  ".join(TEACHERS)
-    rich_draw(d, (W - rich_width(txt, "sans_b", 22)) / 2, 1026, txt, "sans_b", 22, INK_SOFT)
+    rich_draw(d, (W - rich_width(txt, "sans_b", 21)) / 2, 683, txt, "sans_b", 21, INK_SOFT)
 
 
 def dots(im, n, cur):
     if n <= 0:
         return
     d = ImageDraw.Draw(im)
-    gap, r = 28, 6
-    total = (n - 1) * gap + 34
+    gap, r = 26, 5
+    total = (n - 1) * gap + 32
     x = (W - total) / 2
-    y = 1000
+    y = 668
     for i in range(n):
         if i == cur:
-            d.rounded_rectangle((x - 2, y - r, x + 30, y + r), r, fill=NAVY)
-            x += 34 + (gap - 16)
+            d.rounded_rectangle((x - 2, y - r, x + 28, y + r), r, fill=NAVY)
+            x += 32 + (gap - 14)
         else:
             d.ellipse((x, y - r, x + 2 * r, y + r), fill=NAVY if i < cur else WHITE, outline=NAVY, width=2)
             x += gap
@@ -234,16 +282,16 @@ def dots(im, n, cur):
 def static_base(label=None, title=None, n_dots=0, cur_dot=0, title_size=38):
     im = background()
     credits(im)
-    y = 150
+    y = 120
     if label:
-        chip = chip_strip(fix_text(label), 24, NAVY, WHITE, tilt=0, padx=22, pady=7, radius=18)
+        chip = chip_strip(fix_text(label), 22, NAVY, WHITE, tilt=0, padx=20, pady=5, radius=16)
         im.paste(chip, (0, y), chip)
-        y += chip.height + 6
+        y += chip.height + 2
     if title:
-        s = text_strip(fix_text(title), "serif_b", title_size, NAVY, "center", maxw=700)
-        while s.height > 110 and title_size > 26:
+        s = text_strip(fix_text(title), "serif_b", title_size, NAVY, "center", maxw=1150)
+        while s.height > 62 and title_size > 24:
             title_size -= 2
-            s = text_strip(fix_text(title), "serif_b", title_size, NAVY, "center", maxw=700)
+            s = text_strip(fix_text(title), "serif_b", title_size, NAVY, "center", maxw=1150)
         im.paste(s, (0, y), s)
     dots(im, n_dots, cur_dot)
     return im
@@ -252,7 +300,7 @@ def static_base(label=None, title=None, n_dots=0, cur_dot=0, title_size=38):
 # ---------------------------------------------------------------- sahnalar
 # Sahnalar 720x430 tuvalga chizilib, keyin bo'sh joyga moslab kichraytiriladi.
 SW, SH = 720, 430
-SCENE_BOX = (0, 255, W, 665)
+SCENE_BOX = (40, 240, 600, 640)
 
 _COLORS = {
     "blue": (110, 165, 232), "green": (150, 214, 170), "colorless": (214, 232, 240),
@@ -334,13 +382,13 @@ def draw_beaker(d, cx, top, bw, bh, level, liquid, t, p, seed=1):
 
 
 def scene_beaker(d, t, p):
-    cx, top = SW // 2, 70
+    cx, top = SW // 2, 108
     draw_beaker(d, cx, top, 250, 240, float(p.get("level", 0.62)), col(p.get("color")), t, p)
     if p.get("gas_color") or p.get("gas"):
         gas_cloud(d, t, cx, top + 20, p.get("gas_color") or "#D9926B")
     if p.get("gas"):
         rich_draw(d, cx + 120, top - 34, fix_text(str(p["gas"])) + "↑", "sans_b", 34, INK)
-    caption(d, p.get("caption"), top + 270)
+    caption(d, p.get("caption"), top + 268)
 
 
 def scene_test_tube(d, t, p):
@@ -396,8 +444,8 @@ def scene_electrolysis(d, t, p):
     rich_draw(d, cx + 12, 8, "+", "sans_b", 26, WHITE)
     d.line((cx - 30, 8, cx - 30, 2, ex_c, 2, ex_c, ytop), fill=(40, 40, 44, 255), width=3)
     d.line((cx + 30, 8, cx + 30, 2, ex_a, 2, ex_a, ytop), fill=(40, 40, 44, 255), width=3)
-    rich_draw(d, ex_c - 56, top + bh + 6, "KATOD (–)", "sans_b", 24, INK_SOFT)
-    rich_draw(d, ex_a - 52, top + bh + 6, "ANOD (+)", "sans_b", 24, INK_SOFT)
+    for lbl, ex in (("KATOD (–)", ex_c), ("ANOD (+)", ex_a)):
+        rich_draw(d, ex - rich_width(lbl, "sans_b", 19) / 2, top + bh + 8, lbl, "sans_b", 19, INK_SOFT)
     py = top + bh + 52
     d.rounded_rectangle((90, py, SW - 90, py + 28), 14, fill=(255, 255, 255, 230), outline=NAVY + (255,), width=3)
     frac = min(t / 4.0, 1.0) * float(p.get("progress", 0.6))
@@ -422,7 +470,7 @@ def draw_scene(frame, name, t, params):
     bw, bh = SCENE_BOX[2] - SCENE_BOX[0], SCENE_BOX[3] - SCENE_BOX[1]
     k = min(bw / SW, bh / SH)
     ov = ov.resize((int(SW * k), int(SH * k)), Image.LANCZOS)
-    frame.paste(ov, (SCENE_BOX[0] + (bw - ov.width) // 2, SCENE_BOX[1]), ov)
+    frame.paste(ov, (SCENE_BOX[0] + (bw - ov.width) // 2, SCENE_BOX[1] + (bh - ov.height) // 2), ov)
 
 
 # ---------------------------------------------------------------- slaydlar
@@ -486,66 +534,80 @@ def build_slides(data):
     if os.getenv("SHOW_PROBLEM", "0") == "1" and data.get("problem_text"):
         base = static_base("MASALA", data.get("title"), 0, 0, title_size=34)
         ptxt = fix_text(data.get("problem_text", ""))
-        items = layout_items([{"text": ptxt, "style": "note"}], 270, 955, size=34, left=True)
+        items = layout_items([{"text": ptxt, "style": "note"}], 250, 640, size=36, left=True, maxw=1100)
         slides.append(Slide(base, items, hold=max(3.0, 0.04 * len(ptxt)), reveal=[1.0]))
 
-    # 2. Qadamlar
+    # 2. Qadamlar: chapda sahna, o'ngda tenglamalar (sahna bo'lmasa, butun kenglikda)
     for i, st in enumerate(steps):
         base = static_base(st.get("label", f"{i + 1}-QADAM"), st.get("title"), n, i)
         scene = st.get("scene") if st.get("scene") in SCENES else None
-        y0 = 690 if scene else 300
-        items = layout_items(st.get("lines", []), y0, 955)
+        if scene:
+            items = layout_items(st.get("lines", []), 250, 640, size=38, cx=930, maxw=600)
+        else:
+            items = layout_items(st.get("lines", []), 270, 640, size=44, cx=W // 2, maxw=1100)
         reveal = [reading_time(fix_text(l.get("text", ""))) for l in st.get("lines", [])]
         slides.append(Slide(base, items, scene, st.get("scene_params"), hold=1.0, reveal=reveal))
 
-    # 3. Qoidalar
+    # 3. Qoidalar (2 ustun)
     rules = data.get("rules") or []
     if rules:
         base = static_base("QOIDALAR", "Esda saqlang!", n, max(n - 1, 0))
-        strips, y = [], 310
-        for i, r in enumerate(rules[:6]):
-            s = chip_strip(f"{i + 1}  " + fix_text(r), 31, [LIGHT, MINT, SAND][i % 3], maxw=CONTENT_W, pady=16)
-            strips.append((s, y))
-            y += s.height + 24
+        rules = rules[:6]
+        two = len(rules) > 3
+        chips = []
+        for i, r in enumerate(rules):
+            cx = (340 if i % 2 == 0 else 940) if two else W // 2
+            chips.append(chip_strip(f"{i + 1}  " + fix_text(r), 31 if two else 34, [LIGHT, MINT, SAND][i % 3],
+                                    maxw=570 if two else 1000, pady=14, cx=cx))
+        strips, y = [], 262
+        step = 2 if two else 1
+        for row in range(0, len(chips), step):
+            rowc = chips[row:row + step]
+            for c in rowc:
+                strips.append((c, y))
+            y += max(c.height for c in rowc) + 20
         slides.append(Slide(base, strips, hold=1.8,
-                            reveal=[reading_time(fix_text(r), 0.7, 0.022) for r in rules[:6]]))
+                            reveal=[reading_time(fix_text(r), 0.7, 0.022) for r in rules]))
 
-    # 4. Javoblar
+    # 4. Javoblar (2 ustun)
     answers = data.get("answers") or []
     if answers:
         base = static_base("JAVOBLAR", "Natijalar", n, max(n - 1, 0))
-        strips, y = [], 310
-        for a in answers[:6]:
-            val = wrap(fix_text(a.get("value", "")), "sans_b", 34, CONTENT_W - 60)
+        cards = []
+        for i, a in enumerate(answers[:6]):
+            val = wrap(fix_text(a.get("value", "")), "sans_b", 34, 540)
             ch = 52 + 46 * len(val) + 14
             card = Image.new("RGBA", (W, ch + 12), (0, 0, 0, 0))
             cd = ImageDraw.Draw(card)
-            x0, x1 = (W - CONTENT_W) // 2, (W + CONTENT_W) // 2
-            cd.rounded_rectangle((x0, 6, x1, 6 + ch), 12, fill=WHITE, outline=NAVY, width=3)
+            x0 = 50 + (i % 2) * 620
+            cd.rounded_rectangle((x0, 6, x0 + 580, 6 + ch), 12, fill=WHITE, outline=NAVY, width=3)
             rich_draw(cd, x0 + 20, 12, fix_text(a.get("label", "")), "sans", 22, INK_SOFT)
             for j, ln in enumerate(val):
                 rich_draw(cd, x0 + 20, 44 + 46 * j, ln, "sans_b", 34, INK)
-            strips.append((card, y))
-            y += card.height + 20
+            cards.append(card)
+        strips, y = [], 262
+        for row in range(0, len(cards), 2):
+            rowc = cards[row:row + 2]
+            for c in rowc:
+                strips.append((c, y))
+            y += max(c.height for c in rowc) + 10
         slides.append(Slide(base, strips, hold=2.5, reveal=[0.9 / SPEED] * len(strips)))
 
     # 5. Ustozlar sahifasi
     base = background()
-    d = ImageDraw.Draw(base)
-    # shablon sarlavhasidagi kolba ikonkasini kattalashtirib qo'yamiz
-    icon = background().crop((172, 26, 242, 102))
-    icon = icon.resize((int(icon.width * 2.3), int(icon.height * 2.3)), Image.LANCZOS)
+    icon = _orig().crop((231, 35, 325, 137))
+    icon = icon.resize((int(icon.width * 1.5), int(icon.height * 1.5)), Image.LANCZOS)
     mask = Image.new("L", icon.size, 0)
     ImageDraw.Draw(mask).ellipse((0, 0, icon.width - 1, icon.height - 1), fill=255)
-    base.paste(icon, ((W - icon.width) // 2, 240), mask)
-    items = [(text_strip("Ustozlar", "serif_b", 30, INK_SOFT), 430)]
-    y = 490
+    base.paste(icon, ((W - icon.width) // 2, 150), mask)
+    items = [(text_strip("Ustozlar", "serif_b", 30, INK_SOFT), 322)]
+    y = 372
     for name in TEACHERS:
-        s = text_strip(name, "serif_b", 48, NAVY, maxw=700)
+        s = text_strip(name, "serif_b", 50, NAVY, maxw=1100)
         items.append((s, y))
-        y += s.height + 14
+        y += s.height + 8
     if BRAND_HANDLE:
-        items.append((chip_strip(BRAND_HANDLE, 34, ACCENT, WHITE, radius=26, padx=30, pady=12), y + 20))
+        items.append((chip_strip(BRAND_HANDLE, 32, ACCENT, WHITE, radius=26, padx=30, pady=10), y + 14))
     slides.append(Slide(base, items, hold=1.8, reveal=[0.5] + [0.5] * (len(items) - 1)))
     return slides
 
