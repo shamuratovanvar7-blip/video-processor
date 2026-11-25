@@ -47,6 +47,11 @@ async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(HELP)
 
 
+async def myid(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    uid = update.effective_user.id
+    await update.message.reply_text(f"Sizning Telegram ID raqamingiz: {uid}")
+
+
 async def stat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if ALLOWED and update.effective_user.id not in ALLOWED:
         return
@@ -76,7 +81,7 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     rec["count"] += 1
     log.info("Foydalanuvchi: id=%s ism=%s username=@%s xabar#%s", uid, u.full_name, u.username, rec["count"])
     if ALLOWED and uid not in ALLOWED:
-        await msg.reply_text("Kechirasiz, sizga ruxsat berilmagan.")
+        await msg.reply_text(f"Kechirasiz, sizga ruxsat berilmagan. (ID: {uid})")
         return
     text = (msg.text or msg.caption or "").strip()
     img = None
@@ -125,6 +130,7 @@ def main():
     app = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"].strip()).build()
     app.add_handler(CommandHandler(["start", "help"], start))
     app.add_handler(CommandHandler("stat", stat))
+    app.add_handler(CommandHandler("id", myid))
     app.add_handler(CommandHandler("users", users))
     app.add_handler(MessageHandler((filters.TEXT & ~filters.COMMAND) | filters.PHOTO, handle))
     app.run_polling()
