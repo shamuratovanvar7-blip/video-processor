@@ -24,6 +24,7 @@ for _n in ("httpx", "httpcore"):
 ALLOWED = {int(x) for x in re.findall(r"\d+", os.getenv("ALLOWED_USERS", ""))}
 MAX_PER_HOUR = int(os.getenv("MAX_PER_HOUR", "10"))
 _hist = defaultdict(deque)
+_stat = {"requests": 0, "input": 0, "output": 0}
 _sem = asyncio.Semaphore(int(os.getenv("MAX_PARALLEL", "2")))
 
 HELP = ("Salom! Men kimyo masalalarini video yechimga aylantiraman.\n\n"
@@ -43,6 +44,17 @@ def rate_ok(uid):
 
 async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(HELP)
+
+
+async def stat(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    if ALLOWED and update.effective_user.id not in ALLOWED:
+        return
+    n = _stat["requests"]
+    await update.message.reply_text(
+        f"Bot qayta ishga tushganidan beri:\nSo'rovlar: {n}\n"
+        f"Kirish tokenlari: {_stat['input']}\nChiqish tokenlari: {_stat['output']}\n"
+        f"O'rtacha: {(_stat['input'] + _stat['output']) // max(n, 1)} token/masala\n\n"
+        "Aniq narx: platform.claude.com → Расходы / Usage.")
 
 
 async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -66,6 +78,11 @@ async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         try:
             await ctx.bot.send_chat_action(msg.chat_id, ChatAction.TYPING)
             data = await asyncio.to_thread(solver.solve, text, img)
+            u = data.pop("_usage", {})
+            _stat["requests"] += 1
+            _stat["input"] += u.get("input", 0)
+            _stat["output"] += u.get("output", 0)
+            log.info("Token: kirish=%s chiqish=%s (jami so'rov: %s)", u.get("input"), u.get("output"), _stat["requests"])
             await status.edit_text("🎬 Video tayyorlanmoqda...")
             await ctx.bot.send_chat_action(msg.chat_id, ChatAction.UPLOAD_VIDEO)
             with tempfile.TemporaryDirectory() as tmp:
@@ -91,6 +108,7 @@ def main():
     log.info("Bot ishga tushmoqda. Ruxsat berilgan ID lar: %s", sorted(ALLOWED) or "hamma")
     app = Application.builder().token(os.environ["TELEGRAM_BOT_TOKEN"].strip()).build()
     app.add_handler(CommandHandler(["start", "help"], start))
+    app.add_handler(CommandHandler("stat", stat))
     app.add_handler(MessageHandler((filters.TEXT & ~filters.COMMAND) | filters.PHOTO, handle))
     app.run_polling()
 

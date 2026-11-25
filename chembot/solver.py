@@ -75,13 +75,18 @@ def solve(problem_text="", image_bytes=None, image_mime="image/jpeg"):
             "data": base64.b64encode(image_bytes).decode()}})
     content.append({"type": "text", "text": problem_text or "Rasmdagi masalani yech."})
     last = None
+    total_in = total_out = 0
     for _ in range(2):
         msg = client.messages.create(
             model=MODEL, max_tokens=8000, system=SYSTEM,
             messages=[{"role": "user", "content": content}])
         raw = "".join(b.text for b in msg.content if b.type == "text")
+        total_in += msg.usage.input_tokens
+        total_out += msg.usage.output_tokens
         try:
-            return _validate(_extract_json(raw))
+            data = _validate(_extract_json(raw))
+            data["_usage"] = {"input": total_in, "output": total_out}
+            return data
         except Exception as e:  # noqa: BLE001
             last = e
     raise RuntimeError(f"Yechimni o'qib bo'lmadi: {last}")
