@@ -59,7 +59,7 @@ def _rot(a, k):
 
 def complete_spheres(arr, circles, side="top", pad=14, ring_w=1.5, ring_color=None, clean_edge=2):
     """Extend the canvas on `side` by `pad` px and paint the cut caps. Returns (new_arr, pad)."""
-    k = {"top": 0, "left": 1, "bottom": 2, "right": 3}[side]
+    k = {"top": 0, "right": 1, "bottom": 2, "left": 3}[side]   # np.rot90(k=1) is counter-clockwise: the RIGHT edge becomes the top
     a = _rot(arr, k)                       # work as if the cut were at the top
     H, W, _ = a.shape
     # simple explicit mapping per k
@@ -86,7 +86,8 @@ def complete_spheres(arr, circles, side="top", pad=14, ring_w=1.5, ring_color=No
         Y, X = np.mgrid[pad:H + pad, 0:W]
         D = np.hypot(X - cx, Y - cy2)
         inner = (D < r - 2.5) & (new[pad:, :, 3] > 200)
-        if inner.sum() < 30:
+        if inner.sum() < max(8, 0.15 * np.pi * r * r):     # too few visible pixels to model the shading
+            print(f"spherefix: skipped circle {cx:.0f},{cy:.0f} r={r:.0f} (too little visible)")
             continue
         pts = np.column_stack([X[inner], Y[inner]]).astype(float)
         cols = new[pad:, :, :3][inner]
