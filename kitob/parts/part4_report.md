@@ -14,3 +14,6 @@
 
 Tekshiruv: 68, 74, 75, 78, 80-betlar oldin/keyin render qilindi (render/orig_*.png, new_*.png); qolgan 10 bet asl bilan piksel jihatdan bir xil.
 Eslatma (tegmadim): 80-betda "Aluminiy" (sarlavha va "aluminiy gidroksid") qolgan — ro'yxatda faqat 66-bet uchun belgilangan.
+
+## Qo'shimcha (koordinator so'rovi)
+| 80 | A (66-bet bandining davomi) | bajarildi | "Aluminiy" → "Alyuminiy" (katak sarlavhasi); "aluminiy gidroksid" → "alyuminiy gidroksid". 80-betda boshqa "aluminiy/Aluminiy" qolmadi (get_text bilan tekshirildi; jadvaldagi "Alyuminiy gidroksid" allaqachon to'g'ri). Oldin/keyin: render/orig_80.png, render/new_80.png |
