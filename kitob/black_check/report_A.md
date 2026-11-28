@@ -54,3 +54,13 @@ Roman.pdf da qora joylar YO'Q, fayl darajasida ham qoldiq yo'q. iOS'dagi qora ka
 
 ## Yangilanish (vazifa o'zgardi: qoplama + ostidagi yozuv birga o'chirilishi kerak)
 1-qism natijasi: hozirgi Roman.pdf'da qoplamalar yo'qolgan, lekin ostidagi matn/mazmun hali joyida (get_text/search_for topadi: "Molyar massa", "Davr bo'ylab oksid", "2-davr (bosh", "3-davr", "qoldig'i", "Qoida: element"). Yangi talab uchun bu YETARLI EMAS; Roman.pdf o'chirish bo'yicha tayyor emas.
+
+## Yangilanish 2: Kimyo_1-qism_Roman_removed.pdf tekshiruvi (MuPDF, Poppler, PDFium, 80 dpi, 91 bet)
+- Piksel taqqos (Roman.pdf bilan): 3 dasturda ham faqat 51, 52, 82, 83, 84-betlar farq qiladi (MuPDF 15.5k/49.9k/23.6k/109.6k/151.2k piksel; Poppler va PDFium shunga yaqin). Qolgan 86 bet piksel jihatdan bir xil.
+- Matn qidiruvi (get_text/search_for): "Davr bo'ylab oksid", "2-davr (bosh", "3-davr", "temir(II) qoldig", "mis(II) qoldig", "temir(III) qoldig", "alyuminiy qoldig" (84-bet), "Qoida: element" - topilmadi. 51-betning o'ng qismida "Molyar massa" yo'q (52, 54, 55, 57-betdagi "molyar massa" boshqa joylar, to'g'ri). 52-betda "Ma'nosi" yorlig'i yo'q. 83-bet matni faqat "Umumiy formula va hosil bo'lishi" blokini o'z ichiga oladi.
+- 84-bet: uchta jadval yopilgan, pastki/yon ramkalar to'g'ri, yuqoriga siljish toza; faqat Fe(OH)2 ustun chegarasida juda mayda (deyarli ko'rinmas) chiziq siljishi bor.
+- Fayl darajasi: bet izohlari 0 (5 betda bo'sh `/Annots []` massivi qolgan - zararsiz, istasa olib tashlash mumkin), AcroForm/OCProperties yo'q, %%EOF 1 ta, /Prev yo'q, 1750 obyekt, osilib turgan obyekt 0 (Roman.pdf'da 1749; 8 obyekt kam), xom oqimlarda eski matn baytlari yo'q (83-bet kontenti 96 KB -> 43 KB), rasmlar 83-betda 2 -> 0.
+- MUAMMOLAR (vizual):
+  1. 82-bet: pastdagi blok o'chirilgan, lekin bo'sh ramka (kartochka konturi) qolgan (taxminan y=735-810 px @80dpi).
+  2. 83-bet: butun bo'lim o'chirilgan, lekin 4-blok ostida katta bo'sh ramka (yuqori chizig'i yo'q, ochiq kontur, taxminan y=197-722 px) qolgan; sahifaning ~70%i bo'sh. Ramka ham olib tashlanishi (yoki 4-blok ramkasi yopilishi) kerak.
+  3. 52-bet: "Ma'nosi" yorlig'i o'chgan, ichki chiziqli ramka matn bilan qolgan (talab bo'yicha yorliq xolos) - e'tiboringiz uchun.
