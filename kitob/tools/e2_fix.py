@@ -22,7 +22,7 @@ cuts=[110,168,233,290,350,395,448]
 items=[((306,cuts[i],548,cuts[i+1]),round(i*20.2,1)) for i in range(6)]
 move(doc,12,(306,110,548,450),items)
 # p16: 3-katak mazmunini vertikal markazlash
-move(doc,15,(378,603,525,725),[((378,603,525,725),24)],gfx=pymupdf.PDF_REDACT_LINE_ART_NONE)
+move(doc,15,(381,603,522,725),[((381,603,522,725),24)],gfx=pymupdf.PDF_REDACT_LINE_ART_NONE)
 out=pymupdf.open(); out.insert_pdf(doc,from_page=9,to_page=17)
 out.save('parts_e/e2.pdf',garbage=3,deflate=True)
 for i in range(9):
