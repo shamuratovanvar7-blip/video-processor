@@ -33,10 +33,10 @@ Natija: `kitob/black_check/Kimyo_1-qism_Roman_removed.pdf` (Roman asosida).
 | 51 | o'ng "Molyar massa" kartochkasi (matn, nuqtali ramka, sariq/ko'k panel, ▶ belgilari) | apply_redactions (TEXT_REMOVE, IMAGE_REMOVE, LINE_ART_REMOVE_IF_COVERED), "Mol nima?" kartasi tegilmadi |
 | 52 | "1 Ma'nosi" sarlavhasi (doira + sariq yorliq); pastdagi hamma narsa 25.4 pt yuqoriga surildi (bo'sh joy qolmasin) | redaction + `show_pdf_page(clip)` bilan bo'laklab qayta qurish |
 | 82 | pastdagi "3 Davr bo'ylab ..." bloki (ramka, sarlavha, "2-davr" paneli) | redaction |
-| 83 | butun konteyner (2-davr jadvali, 3-davr paneli/jadvali, "Qoida" qutisi, rasmlar, strelkalar); "4 Umumiy formula" bloki sahifa tepasiga (y=74.6) surildi | redaction + siljitish |
+| 83 | butun konteyner (2-davr jadvali, 3-davr paneli/jadvali, "Qoida" qutisi, rasmlar, strelkalar); "4 Umumiy formula" bloki joyida qoldi; konteyner ramkasi ham olib tashlandi (qoldiq vektor yo'q) | redaction + siljitish |
 | 84 | Fe2+, Cu2+, Fe3+, Al3+ qatorlari; jadvallar yopildi (chiziqlar qayta chizildi, chap birlashgan kataklar bir qatorga keltirildi, matni markazga surildi), pastdagi hamma narsa 88.4 pt gacha yuqoriga surildi | qator redaction + bo'laklab surish |
 
-Eslatma: 83-betdagi "4 Umumiy formula" bloki "qoladi" talabiga ko'ra saqlandi, faqat bo'sh joy qolmasligi uchun tepaga surildi (xohlansa `do83`da `compact(...)` chaqiruvini o'chirib, joyida qoldirish mumkin).
+Eslatma: 82/83-betlarda ramka qoldig'i tekshirildi: 82-betda pastki hudud (y>640) da vektor yo'q, 83-betda faqat "4 Umumiy formula" kartochkasi vektorlari bor. Redaction to'rtburchaklari ramka chegarasidan 3-4 pt kengroq olinadi (rounded ramka aks holda 'covered' hisoblanmay qolib ketadi).
 
 Tekshiruv (Roman_removed):
 - (a) get_text()da "Molyar massa", "Ma'nosi", "2-davr", "3-davr", "Qoida", "Fe2+", "Cu2+", "Fe3+", "Al3+", "mis(II) qoldig'i" va boshqa o'chirilganlar yo'q; qolgan "qoldig'i" faqat boshqa (qoladigan) qatorlarda.

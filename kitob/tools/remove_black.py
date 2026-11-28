@@ -8,7 +8,7 @@ blok (anchor matni topilmasa) o'tkazib yuboriladi.
   51-bet : o'ng "Molyar massa" kartochkasi
   52-bet : "1 Ma'nosi" sarlavhasi (pastdagi katak yuqoriga suriladi)
   82-bet : "3 Davr bo'ylab oksid va gidroksidlar ..." bloki
-  83-bet : butun "Davr bo'ylab ..." konteyneri (2-davr/3-davr/Qoida); "4 Umumiy formula" bloki yuqoriga suriladi
+  83-bet : butun "Davr bo'ylab ..." konteyneri (2-davr/3-davr/Qoida, ramka bilan); "4 Umumiy formula" joyida qoladi
   84-bet : 4 ta jadval qatori (Fe2+, Cu2+, Fe3+, Al3+); jadvallar yopiladi, pastdagilar siljiydi
 """
 import sys
@@ -131,11 +131,8 @@ def do83(doc):
     box = (36, 67, 545, 657)
     if not has(p, box, "3-davr", "Qoida", any_=True):
         return False
-    p0 = snapshot(doc, 82)
+    # "4 Umumiy formula" kartochkasi (y>=670) joyida qoladi
     redact(p, [box])
-    # "4 Umumiy formula" bloki (43.1, 677.6 - 538.1, 779.6) konteyner o'rniga yuqoriga suriladi
-    if has(p, (40, 670, 541, 782), "Umumiy"):
-        compact(doc, 82, 660, 781, [(660, 781, 74.6 - 677.6)])
     return True
 
 
