@@ -79,6 +79,8 @@ def extend_card(doc, pno, card, E, n, corner=26):
     for r in redacts:
         p.add_redact_annot(r, fill=False)
     p.apply_redactions(images=0, graphics=COV, text=pymupdf.PDF_REDACT_TEXT_NONE)
+    for r in redacts:
+        p.draw_rect(r, color=None, fill=(1, 1, 1), width=0)
     for clip, dest in pieces:
         p.show_pdf_page(dest, src, 0, clip=clip)
 

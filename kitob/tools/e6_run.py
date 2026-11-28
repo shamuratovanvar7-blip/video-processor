@@ -4,6 +4,8 @@ import e6_p51
 SRC="/home/user/video-processor/kitob/Kimyo_1-qism_yakuniy_v3.pdf"
 def build():
     doc = pymupdf.open(SRC)
+    # p46 (idx 45): left card bottom content spread
+    shift_region(doc, 45, 46.0, 295.0, 564.6, 628.0, [585.0], [11, 22])
     # p48 (idx 47)
     equalize(doc, 47, (294.7, 354.0, 527.3, 531.0), 57.1, [383, 415.8, 449, 467], [0, 16, 16, 34, 50])
     equalize(doc, 47, (294.7, 126.0, 527.3, 339.8), 10.5, [], [0])
@@ -21,5 +23,5 @@ def build():
     return doc
 if __name__ == "__main__":
     doc = build()
-    for n in (48, 50, 51, 52):
+    for n in (46, 48, 50, 51, 52):
         doc[n-1].get_pixmap(dpi=110).save(f"/tmp/w/a{n}.png")

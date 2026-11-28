@@ -118,4 +118,14 @@ def equalize(doc, pno, rc, extra, cuts, shifts, pad=2.6, rad=9, fill_white=True,
         return
     ys = [y0 + pad] + list(cuts) + [y1 - cr]
     for i in range(len(ys) - 1):
-        show(p, snap, (x0 + pad, ys[i], x1 - pad, ys[i + 1]), shifts[i])
+        xa = (x0 + cr, x1 - cr) if (i == 0 and shifts[0] != 0) else (x0 + pad, x1 - pad)
+        show(p, snap, (xa[0], ys[i], xa[1], ys[i + 1]), shifts[i])
+
+def shift_region(doc, pno, x0, x1, y_start, y_end, cuts, shifts, snap=None):
+    """Redact (x0,y_start,x1,y_end) fully and re-show groups split at cuts, each moved by shifts[i]."""
+    p = doc[pno]; PAGE_RECT[0] = p.rect
+    snap = rb.snapshot(doc, pno).tobytes()
+    redact_all(p, [(x0, y_start, x1, y_end)])
+    ys = [y_start] + list(cuts) + [y_end]
+    for i in range(len(ys) - 1):
+        show(p, snap, (x0, ys[i], x1, ys[i + 1]), shifts[i])
